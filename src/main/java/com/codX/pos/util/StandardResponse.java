@@ -1,16 +1,14 @@
-package com.sms.businesslogic.auth;
+package com.codX.pos.util;
 
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class AuthenticationResponse {
-
-    private String token;
-
+public class StandardResponse {
+    private int code;
+    private Object data;
+    private String message;
 }
