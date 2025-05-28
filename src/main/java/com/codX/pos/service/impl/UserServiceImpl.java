@@ -6,6 +6,7 @@ import com.codX.pos.repository.UserRepository;
 import com.codX.pos.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -14,9 +15,13 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public UserEntity create(User user) {
-        return userRepository.save(objectMapper.convertValue(user,UserEntity.class));
+        User updatedUser = user.toBuilder()
+                .password(passwordEncoder.encode(user.password()))
+                .build();
+        return userRepository.save(objectMapper.convertValue(updatedUser,UserEntity.class));
     }
 }
