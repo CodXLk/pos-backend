@@ -1,7 +1,8 @@
 package com.codX.pos.dto;
 
 public enum Role {
-    Admin,
-    User,
-    Customer
+    SUPER_ADMIN,
+    ADMIN,
+    USER,
+    CUSTOMER;
 }
