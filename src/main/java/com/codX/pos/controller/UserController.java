@@ -1,11 +1,8 @@
 package com.codX.pos.controller;
 
-import com.codX.pos.dto.Role;
 import com.codX.pos.dto.User;
 import com.codX.pos.service.UserService;
 import com.codX.pos.util.StandardResponse;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

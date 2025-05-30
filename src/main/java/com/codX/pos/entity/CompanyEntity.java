@@ -1,6 +1,6 @@
 package com.codX.pos.entity;
 
-import com.codX.pos.dto.Role;
+import com.codX.pos.dto.Status;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,22 +19,23 @@ import java.util.UUID;
 @Data
 @Entity
 @Builder
-@AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "user")
+@AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
-public class UserEntity {
+@Table(name = "company")
+public class CompanyEntity {
     @Id
     @GenericGenerator(name = "uuid", strategy = "uuid2")
     @GeneratedValue(generator = "uuid")
     @Column(columnDefinition = "BINARY(16)")
     private UUID id;
-    private String firstName;
-    private String lastName;
+    private String name;
     private String email;
-    private String password;
+    private String address;
+    private String logoUrl;
+    private String contactNumber;
     @Enumerated(EnumType.STRING)
-    private Role role;
+    private Status status;
     @CreatedDate
     private LocalDateTime createdDate;
     @LastModifiedDate
