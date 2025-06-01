@@ -22,7 +22,7 @@ public class AuthenticationController {
     }
 
     @PostMapping("/authenticate")
-    public ResponseEntity<StandardResponse>register(
+    public ResponseEntity<StandardResponse>authenticate(
             @RequestBody AuthenticationRequest authenticationRequest
     ){
         return new ResponseEntity<>(new StandardResponse(200,authenticationService.authenticate(authenticationRequest),"User logged Successfully"), HttpStatus.OK);

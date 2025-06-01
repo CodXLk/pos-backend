@@ -12,6 +12,8 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -33,10 +35,17 @@ public class AuthenticationService {
                     .userName(registerRequest.getUserName())
                     .password(passwordEncoder.encode(registerRequest.getPassword()))
                     .role(registerRequest.getRole())
+                    .tenantId(registerRequest.getTenantId())  // <-- Add tenantId
+                    .branchId(registerRequest.getBranchId())  // <-- Add branchId
                     .build();
             userRepository.save(userEntity);
 
-            String jwtToken = jwtService.generateToken(userEntity);
+            // Prepare extra claims
+            Map<String, Object> extraClaims = new HashMap<>();
+            extraClaims.put("tenantId", registerRequest.getTenantId());
+            extraClaims.put("branchId", registerRequest.getBranchId());
+
+            String jwtToken = jwtService.generateToken(extraClaims, userEntity);
             return AuthenticationResponse.builder()
                     .token(jwtToken)
                     .build();
@@ -55,7 +64,12 @@ public class AuthenticationService {
             UserEntity userEntity = userRepository.findByUserName(request.getUserName())
                     .orElseThrow();
 
-            String jwtToken = jwtService.generateToken(userEntity);
+            Map<String, Object> extraClaims = new HashMap<>();
+            // Use tenantId and branchId from request or user entity as you prefer
+            extraClaims.put("tenantId", request.getTenantId() != null ? request.getTenantId() : userEntity.getTenantId());
+            extraClaims.put("branchId", request.getBranchId() != null ? request.getBranchId() : userEntity.getBranchId());
+
+            String jwtToken = jwtService.generateToken(extraClaims, userEntity);
             return AuthenticationResponse.builder()
                     .token(jwtToken)
                     .build();

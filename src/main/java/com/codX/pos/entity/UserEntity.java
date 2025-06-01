@@ -45,6 +45,8 @@ public class UserEntity implements UserDetails {
     private UUID createdUserId;
     @LastModifiedBy
     private UUID modifiedUserId;
+    private String tenantId;
+    private String branchId;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

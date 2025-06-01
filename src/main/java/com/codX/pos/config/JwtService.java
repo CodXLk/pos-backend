@@ -32,7 +32,7 @@ public class JwtService {
     }
 
     public String generateToken(
-            Map<String, Objects> extraClaims,
+            Map<String, Object> extraClaims,
             UserDetails userDetails
     ){
         return Jwts
@@ -40,9 +40,17 @@ public class JwtService {
                 .setClaims(extraClaims)
                 .setSubject(userDetails.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis()+1000*60*24))
+                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24))
                 .signWith(getSignInKey(), SignatureAlgorithm.HS256)
                 .compact();
+    }
+
+    public String extractTenantId(String token) {
+        return extractClaim(token, claims -> claims.get("tenantId", String.class));
+    }
+
+    public String extractBranchId(String token) {
+        return extractClaim(token, claims -> claims.get("branchId", String.class));
     }
 
     public boolean isTokenValid(String token,UserDetails userDetails){

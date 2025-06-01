@@ -12,4 +12,6 @@ import lombok.NoArgsConstructor;
 public class AuthenticationRequest {
     private String userName;
     private String password;
+    private String tenantId;
+    private String branchId;
 }
