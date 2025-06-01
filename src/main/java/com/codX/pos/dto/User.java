@@ -1,5 +1,6 @@
 package com.codX.pos.dto;
 
+import com.codX.pos.entity.Role;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -17,7 +18,7 @@ public record User(
         UUID id,
         String firstName,
         String lastName,
-        String email,
+        String userName,
         String password,
         Role role,
         LocalDateTime createdDate,

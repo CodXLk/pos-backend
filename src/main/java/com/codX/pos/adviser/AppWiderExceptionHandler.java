@@ -1,7 +1,7 @@
 package com.codX.pos.adviser;
 
-import com.codX.pos.exception.EmailAlreadyExistException;
-import com.codX.pos.exception.EmailOrPasswordIncorrectException;
+import com.codX.pos.exception.UserNameAlreadyExistException;
+import com.codX.pos.exception.UserNameOrPasswordIncorrectException;
 import com.codX.pos.exception.UsernameNotFoundException;
 import com.codX.pos.util.StandardResponse;
 import org.springframework.http.HttpStatus;
@@ -11,13 +11,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class AppWiderExceptionHandler {
-    @ExceptionHandler(EmailAlreadyExistException.class)
-    public ResponseEntity<StandardResponse> handleEmailAlreadyExistException(EmailAlreadyExistException emailAlreadyExistException){
+    @ExceptionHandler(UserNameAlreadyExistException.class)
+    public ResponseEntity<StandardResponse> handleEmailAlreadyExistException(UserNameAlreadyExistException emailAlreadyExistException){
         return new ResponseEntity<>(new StandardResponse(409, emailAlreadyExistException, emailAlreadyExistException.getMessage()), HttpStatus.CONFLICT);
     }
 
-    @ExceptionHandler(EmailOrPasswordIncorrectException.class)
-    public ResponseEntity<StandardResponse> handleEmailOrPasswordIncorrectException(EmailOrPasswordIncorrectException emailOrPasswordIncorrectException){
+    @ExceptionHandler(UserNameOrPasswordIncorrectException.class)
+    public ResponseEntity<StandardResponse> handleEmailOrPasswordIncorrectException(UserNameOrPasswordIncorrectException emailOrPasswordIncorrectException){
         return new ResponseEntity<>(new StandardResponse(401, emailOrPasswordIncorrectException, emailOrPasswordIncorrectException.getMessage()), HttpStatus.UNAUTHORIZED);
     }
 

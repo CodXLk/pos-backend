@@ -2,8 +2,8 @@ package com.codX.pos.auth;
 
 import com.codX.pos.config.JwtService;
 import com.codX.pos.entity.UserEntity;
-import com.codX.pos.exception.EmailAlreadyExistException;
-import com.codX.pos.exception.EmailOrPasswordIncorrectException;
+import com.codX.pos.exception.UserNameAlreadyExistException;
+import com.codX.pos.exception.UserNameOrPasswordIncorrectException;
 import com.codX.pos.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -23,16 +23,15 @@ public class AuthenticationService {
     private final AuthenticationManager authenticationManager;
 
     public AuthenticationResponse register(RegisterRequest registerRequest){
-        Optional<UserEntity> existingUserOptional = userRepository.findByEmail(registerRequest.getEmail());
+        Optional<UserEntity> existingUserOptional = userRepository.findByUserName(registerRequest.getUserName());
         if(existingUserOptional.isPresent()){
-            throw new EmailAlreadyExistException("Email Already Exists");
+            throw new UserNameAlreadyExistException("User Name Already Exists");
         }else{
             UserEntity userEntity = UserEntity.builder()
                     .firstName(registerRequest.getFirstName())
                     .lastName(registerRequest.getLastName())
-                    .email(registerRequest.getEmail())
-                    .password(registerRequest.getPassword())
-//                    .password(passwordEncoder.encode(registerRequest.getPassword()))
+                    .userName(registerRequest.getUserName())
+                    .password(passwordEncoder.encode(registerRequest.getPassword()))
                     .role(registerRequest.getRole())
                     .build();
             userRepository.save(userEntity);
@@ -48,12 +47,12 @@ public class AuthenticationService {
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
-                            request.getEmail(),
+                            request.getUserName(),
                             request.getPassword()
                     )
             );
 
-            UserEntity userEntity = userRepository.findByEmail(request.getEmail())
+            UserEntity userEntity = userRepository.findByUserName(request.getUserName())
                     .orElseThrow();
 
             String jwtToken = jwtService.generateToken(userEntity);
@@ -61,7 +60,7 @@ public class AuthenticationService {
                     .token(jwtToken)
                     .build();
         } catch (AuthenticationException ex) {
-            throw new EmailOrPasswordIncorrectException("Email or Password is incorrect");
+            throw new UserNameOrPasswordIncorrectException("Username or Password is incorrect");
         }
     }
 }
