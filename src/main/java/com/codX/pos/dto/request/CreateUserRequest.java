@@ -72,7 +72,7 @@ public record CreateUserRequest(
         @NotBlank(message = "Email is required")
         @Email(message = "Email should be valid")
         @Size(max = 100, message = "Email must not exceed 100 characters")
-        @Schema(description = "User's email address", example = "jane.smith@example.com", required = true, maxLength = 100)
+        @Schema(description = "User's email address", example = "jane.smith@example.com", required = true, maxLength = 100, pattern = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")
         String email,
 
         @NotNull(message = "Role is required")

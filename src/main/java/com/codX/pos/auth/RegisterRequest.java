@@ -71,7 +71,7 @@ public class RegisterRequest {
     @Email(message = "Email should be valid")
     @Size(max = 100, message = "Email must not exceed 100 characters")
     @Schema(description = "User's email address",
-            example = "john.doe@example.com", required = true, maxLength = 100)
+            example = "john.doe@example.com", required = true, maxLength = 100, pattern = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")
     private String email;
 
     @NotNull(message = "Role is required")
