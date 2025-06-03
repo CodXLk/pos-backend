@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: pos-system
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+
+jwt:
+  expiration: 86400000

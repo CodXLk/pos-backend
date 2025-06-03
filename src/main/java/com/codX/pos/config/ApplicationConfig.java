@@ -1,6 +1,6 @@
-package com.sms.businesslogic.config;
+package com.codX.pos.config;
 
-import com.sms.businesslogic.repository.UserRepository;
+import com.codX.pos.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,7 +21,7 @@ public class ApplicationConfig {
 
     @Bean
     public UserDetailsService userDetailsService(){
-        return username -> userRepository.findByEmail(username)
+        return userName -> userRepository.findByUserName(userName)
                 .orElseThrow(()->new UsernameNotFoundException("User not found"));
     }
 
@@ -42,4 +42,5 @@ public class ApplicationConfig {
     public  PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
+
 }
