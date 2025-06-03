@@ -60,6 +60,7 @@ public class AuthenticationController {
                             "lastName": "Doe",
                             "userName": "johndoe",
                             "password": "password123",
+                            "email": "john.doe@example.com",
                             "role": "COMPANY_ADMIN"
                         }
                         """)

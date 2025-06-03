@@ -2,10 +2,7 @@ package com.codX.pos.auth;
 
 import com.codX.pos.entity.Role;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.Data;
 
 @Data
@@ -17,6 +14,7 @@ import lombok.Data;
             "lastName": "Doe",
             "userName": "johndoe",
             "password": "password123",
+            "email": "john.doe@example.com",
             "role": "COMPANY_ADMIN"
         }
         """
@@ -68,6 +66,13 @@ public class RegisterRequest {
             maxLength = 100
     )
     private String password;
+
+    @NotBlank(message = "Email is required")
+    @Email(message = "Email should be valid")
+    @Size(max = 100, message = "Email must not exceed 100 characters")
+    @Schema(description = "User's email address",
+            example = "john.doe@example.com", required = true, maxLength = 100)
+    private String email;
 
     @NotNull(message = "Role is required")
     @Schema(

@@ -2,10 +2,7 @@ package com.codX.pos.dto.request;
 
 import com.codX.pos.entity.Role;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.Builder;
 
 import java.util.UUID;
@@ -19,6 +16,7 @@ import java.util.UUID;
             "lastName": "Smith",
             "userName": "janesmith",
             "phoneNumber": "+1234567890",
+            "email": "john.doe@example.com",
             "role": "BRANCH_ADMIN",
             "companyId": "123e4567-e89b-12d3-a456-426614174000",
             "branchId": "123e4567-e89b-12d3-a456-426614174001"
@@ -70,6 +68,12 @@ public record CreateUserRequest(
                 pattern = "^\\+?[1-9]\\d{1,14}$"
         )
         String phoneNumber,
+
+        @NotBlank(message = "Email is required")
+        @Email(message = "Email should be valid")
+        @Size(max = 100, message = "Email must not exceed 100 characters")
+        @Schema(description = "User's email address", example = "jane.smith@example.com", required = true, maxLength = 100)
+        String email,
 
         @NotNull(message = "Role is required")
         @Schema(

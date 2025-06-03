@@ -36,6 +36,7 @@ public class AuthenticationService {
                 .lastName(registerRequest.getLastName())
                 .userName(registerRequest.getUserName())
                 .password(passwordEncoder.encode(registerRequest.getPassword()))
+                .email(registerRequest.getEmail())
                 .role(registerRequest.getRole())
                 .isActive(true)
                 .isDefaultPassword(false)

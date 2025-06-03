@@ -81,6 +81,7 @@ public class UserServiceImpl implements UserService {
                 .userName(request.userName())
                 .phoneNumber(request.phoneNumber())
                 .password(passwordEncoder.encode(generateDefaultPassword()))
+                .email(request.email())
                 .role(Role.SUPER_ADMIN)
                 .isDefaultPassword(true)
                 .isActive(true)

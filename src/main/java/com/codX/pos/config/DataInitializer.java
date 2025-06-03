@@ -27,6 +27,7 @@ public class DataInitializer implements CommandLineRunner {
                     .lastName("Admin")
                     .userName("superadmin")
                     .phoneNumber("+94774580710")
+                    .email("aurionx@gmail.com")
                     .role(Role.SUPER_ADMIN)
                     .build();
 

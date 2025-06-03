@@ -75,6 +75,7 @@ public class UserController {
                             "userName": "janesmith",
                             "phoneNumber": "+1234567890",
                             "role": "BRANCH_ADMIN",
+                            "email": "jane.smith@example.com",
                             "companyId": "123e4567-e89b-12d3-a456-426614174000",
                             "branchId": "123e4567-e89b-12d3-a456-426614174001"
                         }
