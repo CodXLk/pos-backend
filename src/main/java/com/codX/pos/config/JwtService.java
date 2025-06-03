@@ -1,9 +1,12 @@
 package com.codX.pos.config;
+
+import com.codX.pos.entity.UserEntity;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -11,42 +14,68 @@ import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
+import java.util.UUID;
 import java.util.function.Function;
 
 @Service
 public class JwtService {
-    private static final String SECRET_KEY="a67fca1f84079c86c23c3ff302b6d2fff9702ef992524266847d6256c6eaa35e";
-    public String extractUsername(String token) {
 
+    @Value("${jwt.secret-key}")
+    private String secretKey;
+
+    @Value("${jwt.expiration}")
+    private long jwtExpiration;
+
+    public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }
 
-    public <T> T extractClaim(String token, Function<Claims,T> claimResolver){
-        final Claims claims=extractAllClaims(token);
+    public UUID extractCompanyId(String token) {
+        String companyIdStr = extractClaim(token, claims -> claims.get("companyId", String.class));
+        return companyIdStr != null ? UUID.fromString(companyIdStr) : null;
+    }
+
+    public UUID extractBranchId(String token) {
+        String branchIdStr = extractClaim(token, claims -> claims.get("branchId", String.class));
+        return branchIdStr != null ? UUID.fromString(branchIdStr) : null;
+    }
+
+    public String extractRole(String token) {
+        return extractClaim(token, claims -> claims.get("role", String.class));
+    }
+
+    public <T> T extractClaim(String token, Function<Claims, T> claimResolver) {
+        final Claims claims = extractAllClaims(token);
         return claimResolver.apply(claims);
     }
 
-    public String generateToken(UserDetails userDetails){
-        return generateToken(new HashMap<>(),userDetails);
+    public String generateToken(UserEntity userEntity) {
+        Map<String, Object> extraClaims = new HashMap<>();
+        extraClaims.put("role", userEntity.getRole().name());
+        if (userEntity.getCompanyId() != null) {
+            extraClaims.put("companyId", userEntity.getCompanyId().toString());
+        }
+        if (userEntity.getBranchId() != null) {
+            extraClaims.put("branchId", userEntity.getBranchId().toString());
+        }
+        extraClaims.put("userId", userEntity.getId().toString());
+
+        return generateToken(extraClaims, userEntity);
     }
 
-    public String generateToken(
-            Map<String, Objects> extraClaims,
-            UserDetails userDetails
-    ){
+    public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
         return Jwts
                 .builder()
                 .setClaims(extraClaims)
                 .setSubject(userDetails.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis()+1000*60*24))
+                .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
                 .signWith(getSignInKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    public boolean isTokenValid(String token,UserDetails userDetails){
-        final String username=extractUsername(token);
+    public boolean isTokenValid(String token, UserDetails userDetails) {
+        final String username = extractUsername(token);
         return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
     }
 
@@ -55,10 +84,10 @@ public class JwtService {
     }
 
     private Date extractExpiration(String token) {
-        return extractClaim(token,Claims::getExpiration);
+        return extractClaim(token, Claims::getExpiration);
     }
 
-    private Claims extractAllClaims(String token){
+    private Claims extractAllClaims(String token) {
         return Jwts
                 .parserBuilder()
                 .setSigningKey(getSignInKey())
@@ -68,7 +97,7 @@ public class JwtService {
     }
 
     private Key getSignInKey() {
-        byte[] keyBytes= Decoders.BASE64.decode(SECRET_KEY);
+        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
         return Keys.hmacShaKeyFor(keyBytes);
     }
 }

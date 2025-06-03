@@ -2,5 +2,7 @@ package com.codX.pos.dto;
 
 public enum Status {
     ACTIVE,
-    INACTIVE
+    INACTIVE,
+    PENDING,
+    SUSPENDED
 }

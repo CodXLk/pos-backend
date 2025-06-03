@@ -24,24 +24,37 @@ import java.util.UUID;
 @EntityListeners(AuditingEntityListener.class)
 @Table(name = "company")
 public class CompanyEntity {
+
     @Id
     @GenericGenerator(name = "uuid", strategy = "uuid2")
     @GeneratedValue(generator = "uuid")
     @Column(columnDefinition = "BINARY(16)")
     private UUID id;
+
     private String name;
     private String email;
     private String address;
     private String logoUrl;
     private String contactNumber;
+    private int maxBranches = 5; // Add this field
+    private boolean isActive = true; // Add this field
+
     @Enumerated(EnumType.STRING)
     private Status status;
+
     @CreatedDate
     private LocalDateTime createdDate;
+
     @LastModifiedDate
     private LocalDateTime lastModifiedDate;
+
     @CreatedBy
+    @Column(columnDefinition = "BINARY(16)")
     private UUID createdUserId;
+
     @LastModifiedBy
+    @Column(columnDefinition = "BINARY(16)")
     private UUID modifiedUserId;
 }
+
+
