@@ -38,6 +38,7 @@ public class UserEntity implements UserDetails {
     private String userName;
     private String password;
     private String phoneNumber;
+    private String email;
     private boolean isDefaultPassword;
     private boolean isActive;
 
