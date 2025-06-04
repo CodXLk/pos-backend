@@ -12,7 +12,6 @@ import org.springframework.data.annotation.LastModifiedBy;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -21,9 +20,9 @@ import java.util.UUID;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "service_types")
+@Table(name = "service_categories")
 @EntityListeners(AuditingEntityListener.class)
-public class ServiceTypeEntity {
+public class ServiceCategoryEntity {
 
     @Id
     @GenericGenerator(name = "uuid", strategy = "uuid2")
@@ -33,12 +32,7 @@ public class ServiceTypeEntity {
 
     private String name;
     private String description;
-    private BigDecimal basePrice;
-    private Integer estimatedDurationMinutes;
     private boolean isActive = true;
-
-    @Column(columnDefinition = "BINARY(16)", nullable = false)
-    private UUID serviceCategoryId;
 
     @Column(columnDefinition = "BINARY(16)", nullable = false)
     private UUID companyId;

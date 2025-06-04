@@ -33,12 +33,14 @@ public class ItemEntity {
 
     private String name;
     private String description;
-    private String category;
     private BigDecimal unitPrice;
     private String unit; // e.g., "liters", "pieces", "kg"
     private Integer stockQuantity;
     private Integer minStockLevel;
     private boolean isActive = true;
+
+    @Column(columnDefinition = "BINARY(16)", nullable = false)
+    private UUID itemCategoryId;
 
     @Column(columnDefinition = "BINARY(16)", nullable = false)
     private UUID companyId;

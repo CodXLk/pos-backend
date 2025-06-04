@@ -50,6 +50,9 @@ public class InvoiceEntity {
     @Column(columnDefinition = "BINARY(16)")
     private UUID vehicleId; // Nullable for item-only purchases
 
+    @Column(columnDefinition = "BINARY(16)")
+    private UUID serviceRecordId; // Link to service record
+
     @Column(columnDefinition = "BINARY(16)", nullable = false)
     private UUID companyId;
 
