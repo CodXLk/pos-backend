@@ -31,7 +31,7 @@ public class InvoiceItemEntity {
     private UUID itemId; // For item sales
 
     @Column(columnDefinition = "BINARY(16)")
-    private UUID serviceRecordDetailId; // For service sales
+    private UUID serviceTypeId; // For service sales
 
     private String description;
     private Integer quantity;

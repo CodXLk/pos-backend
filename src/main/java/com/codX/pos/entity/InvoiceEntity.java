@@ -48,7 +48,10 @@ public class InvoiceEntity {
     private UUID customerId;
 
     @Column(columnDefinition = "BINARY(16)")
-    private UUID vehicleId; // Nullable for item-only purchases
+    private UUID vehicleId;
+
+    @Column(columnDefinition = "BINARY(16)")
+    private UUID serviceRecordId;
 
     @Column(columnDefinition = "BINARY(16)", nullable = false)
     private UUID companyId;
