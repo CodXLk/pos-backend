@@ -18,6 +18,5 @@ public interface InvoiceService {
     List<InvoiceResponse> getInvoicesByCompany(UUID companyId);
     List<InvoiceResponse> getInvoicesByDateRange(LocalDateTime startDate, LocalDateTime endDate);
     void updateInvoiceStatus(UUID id, InvoiceStatus status);
-    byte[] generateInvoicePdf(UUID invoiceId);
     String generateInvoiceNumber();
 }

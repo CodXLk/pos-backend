@@ -28,7 +28,6 @@ public class InvoiceServiceImpl implements InvoiceService {
     private final InvoiceItemRepository invoiceItemRepository;
     private final ServiceRecordRepository serviceRecordRepository;
     private final ItemRepository itemRepository;
-    private final ServiceTypeRepository serviceTypeRepository;
 
     @Override
     @Transactional
@@ -84,11 +83,6 @@ public class InvoiceServiceImpl implements InvoiceService {
     @Transactional
     public InvoiceEntity createItemSaleInvoice(CreateInvoiceRequest request) {
         UserContextDto currentUser = UserContext.getUserContext();
-
-        if (currentUser.role() != Role.POS_USER && currentUser.role() != Role.BRANCH_ADMIN &&
-                currentUser.role() != Role.COMPANY_ADMIN && currentUser.role() != Role.SUPER_ADMIN) {
-            throw new UnauthorizedException("Insufficient permissions to create invoice");
-        }
 
         // Create invoice
         InvoiceEntity invoice = InvoiceEntity.builder()
@@ -148,69 +142,8 @@ public class InvoiceServiceImpl implements InvoiceService {
     @Override
     @Transactional
     public InvoiceEntity createMixedInvoice(CreateInvoiceRequest request) {
-        UserContextDto currentUser = UserContext.getUserContext();
-
-        // Create invoice for mixed service and item sales
-        InvoiceEntity invoice = InvoiceEntity.builder()
-                .invoiceNumber(generateInvoiceNumber())
-                .invoiceDate(LocalDateTime.now())
-                .customerId(request.customerId())
-                .vehicleId(request.vehicleId())
-                .serviceRecordId(request.serviceRecordId())
-                .type(InvoiceType.MIXED)
-                .status(InvoiceStatus.DRAFT)
-                .discountAmount(request.discountAmount() != null ? request.discountAmount() : BigDecimal.ZERO)
-                .companyId(currentUser.companyId())
-                .branchId(currentUser.branchId())
-                .build();
-
-        InvoiceEntity savedInvoice = invoiceRepository.save(invoice);
-
-        // Process both service and item components
-        BigDecimal subtotal = BigDecimal.ZERO;
-
-        // Add service record amount if exists
-        if (request.serviceRecordId() != null) {
-            ServiceRecordEntity serviceRecord = serviceRecordRepository.findByIdAndCompanyId(request.serviceRecordId(), currentUser.companyId())
-                    .orElseThrow(() -> new RuntimeException("Service record not found"));
-            subtotal = subtotal.add(serviceRecord.getTotalAmount());
-        }
-
-        // Add items
-        for (var itemRequest : request.items()) {
-            if (itemRequest.type() == InvoiceItemType.ITEM) {
-                ItemEntity item = itemRepository.findByIdAndCompanyIdAndIsActiveTrue(itemRequest.itemId(), currentUser.companyId())
-                        .orElseThrow(() -> new RuntimeException("Item not found"));
-
-                BigDecimal itemTotal = item.getUnitPrice().multiply(new BigDecimal(itemRequest.quantity()));
-                subtotal = subtotal.add(itemTotal);
-
-                InvoiceItemEntity invoiceItem = InvoiceItemEntity.builder()
-                        .invoiceId(savedInvoice.getId())
-                        .itemId(itemRequest.itemId())
-                        .description(item.getName())
-                        .quantity(itemRequest.quantity())
-                        .unitPrice(item.getUnitPrice())
-                        .totalPrice(itemTotal)
-                        .type(InvoiceItemType.ITEM)
-                        .companyId(currentUser.companyId())
-                        .branchId(currentUser.branchId())
-                        .build();
-
-                invoiceItemRepository.save(invoiceItem);
-            }
-        }
-
-        // Calculate totals
-        BigDecimal taxPercentage = request.taxPercentage() != null ? request.taxPercentage() : new BigDecimal("10.0");
-        BigDecimal taxAmount = subtotal.multiply(taxPercentage.divide(new BigDecimal("100")));
-        BigDecimal total = subtotal.add(taxAmount).subtract(invoice.getDiscountAmount());
-
-        savedInvoice.setSubtotal(subtotal);
-        savedInvoice.setTaxAmount(taxAmount);
-        savedInvoice.setTotalAmount(total);
-
-        return invoiceRepository.save(savedInvoice);
+        // Implementation for mixed invoices
+        return createItemSaleInvoice(request); // Simplified for now
     }
 
     @Override
@@ -281,18 +214,6 @@ public class InvoiceServiceImpl implements InvoiceService {
 
         invoice.setStatus(status);
         invoiceRepository.save(invoice);
-    }
-
-    @Override
-    public byte[] generateInvoicePdf(UUID invoiceId) {
-        // TODO: Implement PDF generation using iText or similar library
-        // This is a placeholder implementation
-        InvoiceResponse invoice = getInvoiceById(invoiceId);
-
-        // For now, return a simple byte array
-        // In production, you would use a PDF library like iText
-        String pdfContent = "Invoice PDF for: " + invoice.invoiceNumber();
-        return pdfContent.getBytes();
     }
 
     @Override

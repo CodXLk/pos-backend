@@ -18,9 +18,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -181,8 +179,8 @@ public class InvoiceController {
             description = "Update the status of an invoice (DRAFT, SENT, PAID, CANCELLED, OVERDUE)"
     )
     public ResponseEntity<?> updateInvoiceStatus(
-            @PathVariable UUID id,
-            @RequestParam InvoiceStatus status) {
+            @Parameter(description = "Invoice ID") @PathVariable UUID id,
+            @Parameter(description = "New invoice status") @RequestParam InvoiceStatus status) {
         invoiceService.updateInvoiceStatus(id, status);
         return new ResponseEntity<>(
                 new StandardResponse(200, null, "Invoice status updated successfully"),
@@ -190,19 +188,17 @@ public class InvoiceController {
         );
     }
 
-    @GetMapping("/{id}/pdf")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'COMPANY_ADMIN', 'BRANCH_ADMIN', 'POS_USER', 'CUSTOMER')")
+    @GetMapping("/generate-number")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'COMPANY_ADMIN', 'BRANCH_ADMIN', 'POS_USER')")
     @Operation(
-            summary = "Generate invoice PDF",
-            description = "Generate and download invoice as PDF"
+            summary = "Generate invoice number",
+            description = "Generate a new invoice number for preview purposes"
     )
-    public ResponseEntity<byte[]> generateInvoicePdf(@PathVariable UUID id) {
-        byte[] pdfBytes = invoiceService.generateInvoicePdf(id);
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_PDF);
-        headers.setContentDispositionFormData("attachment", "invoice-" + id + ".pdf");
-
-        return new ResponseEntity<>(pdfBytes, headers, HttpStatus.OK);
+    public ResponseEntity<?> generateInvoiceNumber() {
+        String invoiceNumber = invoiceService.generateInvoiceNumber();
+        return new ResponseEntity<>(
+                new StandardResponse(200, invoiceNumber, "Invoice number generated successfully"),
+                HttpStatus.OK
+        );
     }
 }
