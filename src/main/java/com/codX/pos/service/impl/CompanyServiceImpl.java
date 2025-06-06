@@ -74,6 +74,9 @@ public class CompanyServiceImpl implements CompanyService {
 
     @Override
     public CompanyEntity updateCompany(UUID id, Company company) {
+        if (companyRepository.existsByNameIgnoreCase(company.name())) {
+            throw new RuntimeException("Company with name '" + company.name() + "' already exists");
+        }
         CompanyEntity existingCompany = getCompanyById(id);
 
         existingCompany.setName(company.name());
