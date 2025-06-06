@@ -45,12 +45,12 @@ public record CreateBranchRequest(
         String address,
 
         @NotBlank(message = "Contact number is required")
-        @Pattern(regexp = "^\\+?[1-9]\\d{1,14}$", message = "Invalid phone number format")
+        @Pattern(regexp = "^\\+?94\\d{9}$", message = "Invalid phone number format")
         @Schema(
                 description = "Contact phone number for the branch (international format preferred)",
-                example = "+1234567892",
+                example = "+94712345678",
                 required = true,
-                pattern = "^\\+?[1-9]\\d{1,14}$"
+                pattern = "^\\+?94\\d{9}$"
         )
         String contactNumber,
 

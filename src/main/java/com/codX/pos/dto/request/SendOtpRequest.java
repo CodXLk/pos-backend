@@ -10,19 +10,19 @@ import lombok.Builder;
         description = "Request to send OTP to phone number",
         example = """
         {
-            "phoneNumber": "+1234567890",
+            "phoneNumber": "+94712345678",
             "purpose": "PASSWORD_RESET"
         }
         """
 )
 public record SendOtpRequest(
         @NotBlank(message = "Phone number is required")
-        @Pattern(regexp = "^\\+?[1-9]\\d{1,14}$", message = "Invalid phone number format")
+        @Pattern(regexp = "^\\+?94\\d{9}$", message = "Invalid phone number format")
         @Schema(
                 description = "Phone number to send OTP to",
-                example = "+1234567890",
+                example = "+94712345678",
                 required = true,
-                pattern = "^\\+?[1-9]\\d{1,14}$"
+                pattern = "^\\+?94\\d{9}$"
         )
         String phoneNumber,
 
