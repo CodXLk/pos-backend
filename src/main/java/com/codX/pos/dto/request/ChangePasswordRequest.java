@@ -11,7 +11,7 @@ import lombok.Builder;
         description = "Request to change password using OTP verification",
         example = """
         {
-            "phoneNumber": "+1234567890",
+            "phoneNumber": "+94712345678",
             "otpCode": "123456",
             "newPassword": "newSecurePassword123"
         }
@@ -19,12 +19,12 @@ import lombok.Builder;
 )
 public record ChangePasswordRequest(
         @NotBlank(message = "Phone number is required")
-        @Pattern(regexp = "^\\+?[1-9]\\d{1,14}$", message = "Invalid phone number format")
+        @Pattern(regexp = "^\\+?94\\d{9}$", message = "Invalid phone number format")
         @Schema(
                 description = "Phone number associated with the account",
-                example = "+1234567890",
+                example = "+94712345678",
                 required = true,
-                pattern = "^\\+?[1-9]\\d{1,14}$"
+                pattern = "^\\+?94\\d{9}$"
         )
         String phoneNumber,
 
