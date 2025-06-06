@@ -131,10 +131,9 @@ public class CompanyController {
             @ApiResponse(responseCode = "409", description = "Company name already exists")
     })
     public ResponseEntity<?> updateCompany(
-            @Valid
             @Parameter(description = "Company ID", example = "123e4567-e89b-12d3-a456-426614174000")
             @PathVariable UUID id,
-            @RequestBody Company company) {
+            @Valid @RequestBody Company company) {
         CompanyEntity updatedCompany = companyService.updateCompany(id, company);
         return new ResponseEntity<>(
                 new StandardResponse(200, updatedCompany, "Company updated successfully"),
