@@ -67,7 +67,7 @@ public class ServiceCategoryController {
     }
 
     @GetMapping("/company/{companyId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'COMPANY_ADMIN', 'BRANCH_ADMIN', 'POS_USER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'COMPANY_ADMIN')")
     @Operation(
             summary = "Get service categories by company",
             description = "Retrieve all service categories for a specific company"
