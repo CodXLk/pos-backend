@@ -1,6 +1,7 @@
 package com.codX.pos.controller;
 
 import com.codX.pos.dto.request.CreateServiceRecordRequest;
+import com.codX.pos.dto.response.ServiceRecordResponse;
 import com.codX.pos.entity.ServiceRecordEntity;
 import com.codX.pos.service.ServiceRecordService;
 import com.codX.pos.util.StandardResponse;
@@ -48,11 +49,11 @@ public class ServiceRecordController {
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'COMPANY_ADMIN', 'BRANCH_ADMIN', 'POS_USER', 'CUSTOMER')")
     @Operation(
             summary = "Get service history by vehicle",
-            description = "Retrieve complete service history for a specific vehicle"
+            description = "Retrieve complete service history for a specific vehicle with service details"
     )
     public ResponseEntity<?> getServiceRecordsByVehicle(
             @Parameter(description = "Vehicle ID") @PathVariable UUID vehicleId) {
-        List<ServiceRecordEntity> serviceRecords = serviceRecordService.getServiceRecordsByVehicle(vehicleId);
+        List<ServiceRecordResponse> serviceRecords = serviceRecordService.getServiceRecordsByVehicle(vehicleId);
         return new ResponseEntity<>(
                 new StandardResponse(200, serviceRecords, "Service records retrieved successfully"),
                 HttpStatus.OK
@@ -63,11 +64,11 @@ public class ServiceRecordController {
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'COMPANY_ADMIN', 'BRANCH_ADMIN', 'POS_USER')")
     @Operation(
             summary = "Get service records by customer",
-            description = "Retrieve all service records for a specific customer across all their vehicles"
+            description = "Retrieve all service records for a specific customer across all their vehicles with service details"
     )
     public ResponseEntity<?> getServiceRecordsByCustomer(
             @Parameter(description = "Customer ID") @PathVariable UUID customerId) {
-        List<ServiceRecordEntity> serviceRecords = serviceRecordService.getServiceRecordsByCustomer(customerId);
+        List<ServiceRecordResponse> serviceRecords = serviceRecordService.getServiceRecordsByCustomer(customerId);
         return new ResponseEntity<>(
                 new StandardResponse(200, serviceRecords, "Service records retrieved successfully"),
                 HttpStatus.OK
@@ -78,12 +79,12 @@ public class ServiceRecordController {
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'COMPANY_ADMIN', 'BRANCH_ADMIN')")
     @Operation(
             summary = "Get service records by date range",
-            description = "Retrieve service records within a specific date range for reporting"
+            description = "Retrieve service records within a specific date range for reporting with service details"
     )
     public ResponseEntity<?> getServiceRecordsByDateRange(
             @Parameter(description = "Start date") @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @Parameter(description = "End date") @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
-        List<ServiceRecordEntity> serviceRecords = serviceRecordService.getServiceRecordsByDateRange(startDate, endDate);
+        List<ServiceRecordResponse> serviceRecords = serviceRecordService.getServiceRecordsByDateRange(startDate, endDate);
         return new ResponseEntity<>(
                 new StandardResponse(200, serviceRecords, "Service records retrieved successfully"),
                 HttpStatus.OK
@@ -92,9 +93,9 @@ public class ServiceRecordController {
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'COMPANY_ADMIN', 'BRANCH_ADMIN', 'POS_USER')")
-    @Operation(summary = "Get service record by ID")
+    @Operation(summary = "Get service record by ID with service details")
     public ResponseEntity<?> getServiceRecordById(@PathVariable UUID id) {
-        ServiceRecordEntity serviceRecord = serviceRecordService.getServiceRecordById(id);
+        ServiceRecordResponse serviceRecord = serviceRecordService.getServiceRecordById(id);
         return new ResponseEntity<>(
                 new StandardResponse(200, serviceRecord, "Service record retrieved successfully"),
                 HttpStatus.OK
@@ -103,7 +104,7 @@ public class ServiceRecordController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'COMPANY_ADMIN', 'BRANCH_ADMIN', 'POS_USER')")
-    @Operation(summary = "Update service record")
+    @Operation(summary = "Update service record with service details")
     public ResponseEntity<?> updateServiceRecord(@PathVariable UUID id, @Valid @RequestBody CreateServiceRecordRequest request) {
         ServiceRecordEntity serviceRecord = serviceRecordService.updateServiceRecord(id, request);
         return new ResponseEntity<>(

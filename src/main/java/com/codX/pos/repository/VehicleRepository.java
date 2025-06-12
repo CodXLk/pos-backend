@@ -15,6 +15,8 @@ public interface VehicleRepository extends JpaRepository<VehicleEntity, UUID> {
     List<VehicleEntity> findByCustomerIdAndCompanyIdAndIsActiveTrue(UUID customerId, UUID companyId);
     List<VehicleEntity> findByCompanyIdAndIsActiveTrue(UUID companyId);
     List<VehicleEntity> findByCompanyIdAndBranchIdAndIsActiveTrue(UUID companyId, UUID branchId);
+    List<VehicleEntity> findByBranchIdAndIsActiveTrue(UUID branchId); // NEW METHOD
+    List<VehicleEntity> findByIsActiveTrue();
     Optional<VehicleEntity> findByVehicleNumberAndCompanyIdAndIsActiveTrue(String vehicleNumber, UUID companyId);
     Optional<VehicleEntity> findByIdAndCompanyIdAndIsActiveTrue(UUID id, UUID companyId);
     boolean existsByVehicleNumberAndCompanyId(String vehicleNumber, UUID companyId);

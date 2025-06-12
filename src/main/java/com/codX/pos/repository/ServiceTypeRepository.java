@@ -12,6 +12,7 @@ import java.util.UUID;
 public interface ServiceTypeRepository extends JpaRepository<ServiceTypeEntity, UUID> {
     List<ServiceTypeEntity> findByCompanyIdAndIsActiveTrue(UUID companyId);
     List<ServiceTypeEntity> findByCompanyIdAndBranchIdAndIsActiveTrue(UUID companyId, UUID branchId);
+    List<ServiceTypeEntity> findByBranchIdAndIsActiveTrue(UUID branchId); // NEW METHOD
     List<ServiceTypeEntity> findByServiceCategoryIdAndCompanyIdAndIsActiveTrue(UUID serviceCategoryId, UUID companyId);
     Optional<ServiceTypeEntity> findByIdAndCompanyIdAndIsActiveTrue(UUID id, UUID companyId);
     boolean existsByNameAndCompanyIdAndBranchId(String name, UUID companyId, UUID branchId);

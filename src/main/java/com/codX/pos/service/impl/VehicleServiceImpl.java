@@ -53,6 +53,53 @@ public class VehicleServiceImpl implements VehicleService {
         return vehicleRepository.save(vehicle);
     }
 
+    // NEW METHOD: Get all vehicles (Super Admin only)
+    @Override
+    public List<VehicleResponse> getAllVehicles() {
+        UserContextDto currentUser = UserContext.getUserContext();
+
+        if (currentUser.role() != Role.SUPER_ADMIN) {
+            throw new UnauthorizedException("Only Super Admin can access all vehicles");
+        }
+
+        List<VehicleEntity> vehicles = vehicleRepository.findByIsActiveTrue();
+
+        return vehicles.stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    // NEW METHOD: Get vehicles by branch
+    @Override
+    public List<VehicleResponse> getVehiclesByBranch(UUID branchId) {
+        UserContextDto currentUser = UserContext.getUserContext();
+
+        // Authorization logic based on role
+        switch (currentUser.role()) {
+            case SUPER_ADMIN:
+                // Super admin can access any branch
+                break;
+            case COMPANY_ADMIN:
+                // Company admin can access branches within their company
+                // You might want to add a check here to ensure the branch belongs to their company
+                break;
+            case BRANCH_ADMIN:
+                // Branch admin can only access their own branch
+                if (!currentUser.branchId().equals(branchId)) {
+                    throw new UnauthorizedException("Branch Admin can only access their own branch vehicles");
+                }
+                break;
+            default:
+                throw new UnauthorizedException("Insufficient permissions to access branch vehicles");
+        }
+
+        List<VehicleEntity> vehicles = vehicleRepository.findByBranchIdAndIsActiveTrue(branchId);
+
+        return vehicles.stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
     @Override
     public List<VehicleResponse> getVehiclesByCustomer(UUID customerId) {
         UserContextDto currentUser = UserContext.getUserContext();

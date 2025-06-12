@@ -158,6 +158,19 @@ public class InvoiceServiceImpl implements InvoiceService {
         return mapToResponse(invoice, invoiceItems);
     }
 
+    // NEW METHOD: Get invoice by invoice number
+    @Override
+    public InvoiceResponse getInvoiceByNumber(String invoiceNumber) {
+        UserContextDto currentUser = UserContext.getUserContext();
+
+        InvoiceEntity invoice = invoiceRepository.findByInvoiceNumberAndCompanyId(invoiceNumber, currentUser.companyId())
+                .orElseThrow(() -> new RuntimeException("Invoice not found with number: " + invoiceNumber));
+
+        List<InvoiceItemEntity> invoiceItems = invoiceItemRepository.findByInvoiceIdAndCompanyId(invoice.getId(), currentUser.companyId());
+
+        return mapToResponse(invoice, invoiceItems);
+    }
+
     @Override
     public List<InvoiceResponse> getInvoicesByCustomer(UUID customerId) {
         UserContextDto currentUser = UserContext.getUserContext();
@@ -185,6 +198,40 @@ public class InvoiceServiceImpl implements InvoiceService {
         return invoices.stream()
                 .map(invoice -> {
                     List<InvoiceItemEntity> items = invoiceItemRepository.findByInvoiceIdAndCompanyId(invoice.getId(), companyId);
+                    return mapToResponse(invoice, items);
+                })
+                .collect(Collectors.toList());
+    }
+
+    // NEW METHOD: Get invoices by branch
+    @Override
+    public List<InvoiceResponse> getInvoicesByBranch(UUID branchId) {
+        UserContextDto currentUser = UserContext.getUserContext();
+
+        // Authorization logic based on role
+        switch (currentUser.role()) {
+            case SUPER_ADMIN:
+                // Super admin can access any branch
+                break;
+            case COMPANY_ADMIN:
+                // Company admin can access branches within their company
+                break;
+            case BRANCH_ADMIN:
+            case POS_USER:
+                // Branch admin and POS user can only access their own branch
+                if (!currentUser.branchId().equals(branchId)) {
+                    throw new UnauthorizedException("You can only access invoices from your own branch");
+                }
+                break;
+            default:
+                throw new UnauthorizedException("Insufficient permissions to access branch invoices");
+        }
+
+        List<InvoiceEntity> invoices = invoiceRepository.findByBranchIdOrderByInvoiceDateDesc(branchId);
+
+        return invoices.stream()
+                .map(invoice -> {
+                    List<InvoiceItemEntity> items = invoiceItemRepository.findByInvoiceIdAndCompanyId(invoice.getId(), currentUser.companyId());
                     return mapToResponse(invoice, items);
                 })
                 .collect(Collectors.toList());

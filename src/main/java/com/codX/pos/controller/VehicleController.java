@@ -73,6 +73,67 @@ public class VehicleController {
         );
     }
 
+    // NEW ENDPOINT: Get all vehicles
+    @GetMapping("/all")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN')")
+    @Operation(
+            summary = "Get all vehicles (Super Admin only)",
+            description = "Retrieve all vehicles across all companies. Only accessible by Super Admin."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "All vehicles retrieved successfully"),
+            @ApiResponse(responseCode = "403", description = "Insufficient permissions - Super Admin access required")
+    })
+    public ResponseEntity<?> getAllVehicles() {
+        List<VehicleResponse> vehicles = vehicleService.getAllVehicles();
+        return new ResponseEntity<>(
+                new StandardResponse(200, vehicles, "All vehicles retrieved successfully"),
+                HttpStatus.OK
+        );
+    }
+
+    // NEW ENDPOINT: Get vehicles by company
+    @GetMapping("/company/{companyId}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'COMPANY_ADMIN')")
+    @Operation(
+            summary = "Get vehicles by company",
+            description = "Retrieve all vehicles for a specific company. Super Admin can access any company, Company Admin can only access their own company."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Company vehicles retrieved successfully"),
+            @ApiResponse(responseCode = "403", description = "Insufficient permissions"),
+            @ApiResponse(responseCode = "404", description = "Company not found")
+    })
+    public ResponseEntity<?> getVehiclesByCompany(
+            @Parameter(description = "Company ID") @PathVariable UUID companyId) {
+        List<VehicleResponse> vehicles = vehicleService.getVehiclesByCompany(companyId);
+        return new ResponseEntity<>(
+                new StandardResponse(200, vehicles, "Company vehicles retrieved successfully"),
+                HttpStatus.OK
+        );
+    }
+
+    // NEW ENDPOINT: Get vehicles by branch
+    @GetMapping("/branch/{branchId}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'COMPANY_ADMIN', 'BRANCH_ADMIN')")
+    @Operation(
+            summary = "Get vehicles by branch",
+            description = "Retrieve all vehicles for a specific branch. Access controlled based on user role and hierarchy."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Branch vehicles retrieved successfully"),
+            @ApiResponse(responseCode = "403", description = "Insufficient permissions"),
+            @ApiResponse(responseCode = "404", description = "Branch not found")
+    })
+    public ResponseEntity<?> getVehiclesByBranch(
+            @Parameter(description = "Branch ID") @PathVariable UUID branchId) {
+        List<VehicleResponse> vehicles = vehicleService.getVehiclesByBranch(branchId);
+        return new ResponseEntity<>(
+                new StandardResponse(200, vehicles, "Branch vehicles retrieved successfully"),
+                HttpStatus.OK
+        );
+    }
+
     @GetMapping("/customer/{customerId}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'COMPANY_ADMIN', 'BRANCH_ADMIN', 'POS_USER')")
     @Operation(

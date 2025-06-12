@@ -16,6 +16,7 @@ import java.util.UUID;
 public interface InvoiceRepository extends JpaRepository<InvoiceEntity, UUID> {
     List<InvoiceEntity> findByCustomerIdAndCompanyIdOrderByInvoiceDateDesc(UUID customerId, UUID companyId);
     List<InvoiceEntity> findByCompanyIdAndBranchIdOrderByInvoiceDateDesc(UUID companyId, UUID branchId);
+    List<InvoiceEntity> findByBranchIdOrderByInvoiceDateDesc(UUID branchId); // NEW METHOD
     Optional<InvoiceEntity> findByIdAndCompanyId(UUID id, UUID companyId);
     List<InvoiceEntity> findByStatusAndCompanyIdAndBranchId(InvoiceStatus status, UUID companyId, UUID branchId);
     Optional<InvoiceEntity> findByInvoiceNumberAndCompanyId(String invoiceNumber, UUID companyId);

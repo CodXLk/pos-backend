@@ -71,6 +71,26 @@ public class ItemController {
         );
     }
 
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'COMPANY_ADMIN', 'BRANCH_ADMIN', 'POS_USER')")
+    @Operation(
+            summary = "Get item by ID",
+            description = "Retrieve a specific item by its ID"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Item retrieved successfully"),
+            @ApiResponse(responseCode = "404", description = "Item not found"),
+            @ApiResponse(responseCode = "403", description = "Insufficient permissions")
+    })
+    public ResponseEntity<?> getItemById(
+            @Parameter(description = "Item ID") @PathVariable UUID id) {
+        ItemEntity item = itemService.getItemById(id);
+        return new ResponseEntity<>(
+                new StandardResponse(200, item, "Item retrieved successfully"),
+                HttpStatus.OK
+        );
+    }
+
     @GetMapping("/category/{categoryId}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'COMPANY_ADMIN', 'BRANCH_ADMIN', 'POS_USER')")
     @Operation(
@@ -97,6 +117,26 @@ public class ItemController {
         List<ItemEntity> items = itemService.getItemsByCompany(companyId);
         return new ResponseEntity<>(
                 new StandardResponse(200, items, "Items retrieved successfully"),
+                HttpStatus.OK
+        );
+    }
+
+    @GetMapping("/branch/{branchId}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'COMPANY_ADMIN', 'BRANCH_ADMIN', 'POS_USER')")
+    @Operation(
+            summary = "Get items by branch",
+            description = "Retrieve all items for a specific branch. Access controlled based on user role and hierarchy."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Branch items retrieved successfully"),
+            @ApiResponse(responseCode = "403", description = "Insufficient permissions"),
+            @ApiResponse(responseCode = "404", description = "Branch not found")
+    })
+    public ResponseEntity<?> getItemsByBranch(
+            @Parameter(description = "Branch ID") @PathVariable UUID branchId) {
+        List<ItemEntity> items = itemService.getItemsByBranch(branchId);
+        return new ResponseEntity<>(
+                new StandardResponse(200, items, "Branch items retrieved successfully"),
                 HttpStatus.OK
         );
     }

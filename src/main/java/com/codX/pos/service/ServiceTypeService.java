@@ -10,6 +10,7 @@ public interface ServiceTypeService {
     ServiceTypeEntity createServiceType(CreateServiceTypeRequest request);
     List<ServiceTypeEntity> getServiceTypesByCategory(UUID categoryId);
     List<ServiceTypeEntity> getServiceTypesByCompany(UUID companyId);
+    List<ServiceTypeEntity> getServiceTypesByBranch(UUID branchId); // NEW METHOD
     ServiceTypeEntity getServiceTypeById(UUID id);
     ServiceTypeEntity updateServiceType(UUID id, CreateServiceTypeRequest request);
     void deactivateServiceType(UUID id);

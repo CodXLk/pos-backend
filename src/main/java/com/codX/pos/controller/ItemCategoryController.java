@@ -66,6 +66,26 @@ public class ItemCategoryController {
         );
     }
 
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'COMPANY_ADMIN', 'BRANCH_ADMIN', 'POS_USER')")
+    @Operation(
+            summary = "Get item category by ID",
+            description = "Retrieve a specific item category by its ID"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Item category retrieved successfully"),
+            @ApiResponse(responseCode = "404", description = "Item category not found"),
+            @ApiResponse(responseCode = "403", description = "Insufficient permissions")
+    })
+    public ResponseEntity<?> getItemCategoryById(
+            @Parameter(description = "Item Category ID") @PathVariable UUID id) {
+        ItemCategoryEntity itemCategory = itemCategoryService.getItemCategoryById(id);
+        return new ResponseEntity<>(
+                new StandardResponse(200, itemCategory, "Item category retrieved successfully"),
+                HttpStatus.OK
+        );
+    }
+
     @GetMapping("/company/{companyId}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'COMPANY_ADMIN')")
     @Operation(

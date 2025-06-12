@@ -126,6 +126,26 @@ public class InvoiceController {
         );
     }
 
+    @GetMapping("/number/{invoiceNumber}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'COMPANY_ADMIN', 'BRANCH_ADMIN', 'POS_USER', 'CUSTOMER')")
+    @Operation(
+            summary = "Get invoice by invoice number",
+            description = "Retrieve invoice details by invoice number with all invoice items"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Invoice retrieved successfully"),
+            @ApiResponse(responseCode = "404", description = "Invoice not found"),
+            @ApiResponse(responseCode = "403", description = "Insufficient permissions")
+    })
+    public ResponseEntity<?> getInvoiceByNumber(
+            @Parameter(description = "Invoice Number", example = "INV-20241215-0001") @PathVariable String invoiceNumber) {
+        InvoiceResponse invoice = invoiceService.getInvoiceByNumber(invoiceNumber);
+        return new ResponseEntity<>(
+                new StandardResponse(200, invoice, "Invoice retrieved successfully"),
+                HttpStatus.OK
+        );
+    }
+
     @GetMapping("/customer/{customerId}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'COMPANY_ADMIN', 'BRANCH_ADMIN', 'POS_USER')")
     @Operation(
@@ -152,6 +172,26 @@ public class InvoiceController {
         List<InvoiceResponse> invoices = invoiceService.getInvoicesByCompany(companyId);
         return new ResponseEntity<>(
                 new StandardResponse(200, invoices, "Company invoices retrieved successfully"),
+                HttpStatus.OK
+        );
+    }
+
+    @GetMapping("/branch/{branchId}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'COMPANY_ADMIN', 'BRANCH_ADMIN', 'POS_USER')")
+    @Operation(
+            summary = "Get invoices by branch",
+            description = "Retrieve all invoices for a specific branch. Access controlled based on user role and hierarchy."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Branch invoices retrieved successfully"),
+            @ApiResponse(responseCode = "403", description = "Insufficient permissions"),
+            @ApiResponse(responseCode = "404", description = "Branch not found")
+    })
+    public ResponseEntity<?> getInvoicesByBranch(
+            @Parameter(description = "Branch ID") @PathVariable UUID branchId) {
+        List<InvoiceResponse> invoices = invoiceService.getInvoicesByBranch(branchId);
+        return new ResponseEntity<>(
+                new StandardResponse(200, invoices, "Branch invoices retrieved successfully"),
                 HttpStatus.OK
         );
     }

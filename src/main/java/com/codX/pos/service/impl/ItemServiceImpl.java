@@ -69,6 +69,32 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Override
+    public List<ItemEntity> getItemsByBranch(UUID branchId) {
+        UserContextDto currentUser = UserContext.getUserContext();
+
+        // Authorization logic based on role
+        switch (currentUser.role()) {
+            case SUPER_ADMIN:
+                // Super admin can access any branch
+                break;
+            case COMPANY_ADMIN:
+                // Company admin can access branches within their company
+                break;
+            case BRANCH_ADMIN:
+            case POS_USER:
+                // Branch admin and POS user can only access their own branch
+                if (!currentUser.branchId().equals(branchId)) {
+                    throw new UnauthorizedException("You can only access items from your own branch");
+                }
+                break;
+            default:
+                throw new UnauthorizedException("Insufficient permissions to access branch items");
+        }
+
+        return itemRepository.findByBranchIdAndIsActiveTrue(branchId);
+    }
+
+    @Override
     public ItemEntity getItemById(UUID id) {
         UserContextDto currentUser = UserContext.getUserContext();
 

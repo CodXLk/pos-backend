@@ -67,6 +67,32 @@ public class ServiceTypeServiceImpl implements ServiceTypeService {
     }
 
     @Override
+    public List<ServiceTypeEntity> getServiceTypesByBranch(UUID branchId) {
+        UserContextDto currentUser = UserContext.getUserContext();
+
+        // Authorization logic based on role
+        switch (currentUser.role()) {
+            case SUPER_ADMIN:
+                // Super admin can access any branch
+                break;
+            case COMPANY_ADMIN:
+                // Company admin can access branches within their company
+                break;
+            case BRANCH_ADMIN:
+            case POS_USER:
+                // Branch admin and POS user can only access their own branch
+                if (!currentUser.branchId().equals(branchId)) {
+                    throw new UnauthorizedException("You can only access service types from your own branch");
+                }
+                break;
+            default:
+                throw new UnauthorizedException("Insufficient permissions to access branch service types");
+        }
+
+        return serviceTypeRepository.findByBranchIdAndIsActiveTrue(branchId);
+    }
+
+    @Override
     public ServiceTypeEntity getServiceTypeById(UUID id) {
         UserContextDto currentUser = UserContext.getUserContext();
 

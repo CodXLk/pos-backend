@@ -5,9 +5,12 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Data
@@ -19,23 +22,41 @@ import java.util.UUID;
 public class ServiceRecordDetailEntity {
 
     @Id
-    @GenericGenerator(name = "uuid", strategy = "uuid2")
-    @GeneratedValue(generator = "uuid")
-    @Column(columnDefinition = "BINARY(16)")
+    @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
-    @Column(columnDefinition = "BINARY(16)", nullable = false)
+    @Column(name = "service_record_id", nullable = false)
     private UUID serviceRecordId;
 
-    @Column(columnDefinition = "BINARY(16)", nullable = false)
+    @Column(name = "service_type_id", nullable = false)
     private UUID serviceTypeId;
 
-    private BigDecimal servicePrice;
+    @Column(name = "item_id")
+    private UUID itemId;
+
+    @Column(name = "quantity", nullable = false)
+    private Integer quantity;
+
+    @Column(name = "unit_price", nullable = false, precision = 10, scale = 2)
+    private BigDecimal unitPrice;
+
+    @Column(name = "total_price", nullable = false, precision = 10, scale = 2)
+    private BigDecimal totalPrice;
+
+    @Column(name = "notes")
     private String notes;
 
-    @Column(columnDefinition = "BINARY(16)", nullable = false)
+    @Column(name = "company_id", nullable = false)
     private UUID companyId;
 
-    @Column(columnDefinition = "BINARY(16)", nullable = false)
+    @Column(name = "branch_id", nullable = false)
     private UUID branchId;
+
+    @CreationTimestamp
+    @Column(name = "created_date", nullable = false, updatable = false)
+    private LocalDateTime createdDate;
+
+    @UpdateTimestamp
+    @Column(name = "last_modified_date")
+    private LocalDateTime lastModifiedDate;
 }
