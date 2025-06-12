@@ -14,6 +14,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
 
@@ -121,13 +122,17 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserEntity getUserById(UUID id) {
-        return userRepository.findById(id)
+        UserEntity userEntity = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+        UserContextDto currentUser = UserContext.getUserContext();
+        validateGetUserPermissions(currentUser, userEntity);
+        return userEntity;
     }
 
     @Override
     public UserEntity updateUser(UUID id, CreateUserRequest request) {
-        UserEntity existingUser = getUserById(id);
+        UserEntity existingUser = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
         UserContextDto currentUser = UserContext.getUserContext();
 
         // Validate access permissions
@@ -142,7 +147,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void deactivateUser(UUID id) {
-        UserEntity user = getUserById(id);
+        UserEntity user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
         UserContextDto currentUser = UserContext.getUserContext();
 
         validateUserUpdatePermissions(currentUser, user);
@@ -236,8 +242,39 @@ public class UserServiceImpl implements UserService {
                     throw new UnauthorizedException("Cannot update user from different branch");
                 }
                 break;
+            case POS_USER:
+                if (!currentUser.branchId().equals(targetUser.getBranchId()) || !targetUser.getRole().equals(Role.CUSTOMER)) {
+                    throw new UnauthorizedException("Only can update customers with same branch");
+                }
+                break;
             default:
                 throw new UnauthorizedException("Insufficient permissions to update user");
+        }
+    }
+
+    private void validateGetUserPermissions(UserContextDto currentUser, UserEntity targetUser) {
+        switch (currentUser.role()) {
+            case SUPER_ADMIN:
+                break;
+            case COMPANY_ADMIN:
+                if (!currentUser.companyId().equals(targetUser.getCompanyId())) {
+                    throw new UnauthorizedException("Cannot get user from different company");
+                }
+                break;
+            case BRANCH_ADMIN:
+                if (!currentUser.branchId().equals(targetUser.getBranchId())) {
+                    throw new UnauthorizedException("Cannot get user from different branch");
+                }
+                break;
+            case POS_USER:
+                if (!EnumSet.of(Role.CUSTOMER, Role.EMPLOYEE).contains(targetUser.getRole()) || !currentUser.branchId().equals(targetUser.getBranchId())) {
+                    throw new UnauthorizedException("Only can get customers and employees with same branch");
+                }
+                break;
+            default:
+                throw new UnauthorizedException("Insufficient permissions to get user");
+
+
         }
     }
 }
