@@ -20,10 +20,10 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
     List<UserEntity> findByCompanyIdAndBranchIdAndIsActiveTrue(UUID companyId, UUID branchId);
     List<UserEntity> findByRoleAndCompanyIdAndIsActiveTrue(Role role, UUID companyId);
     List<UserEntity> findByRoleAndBranchIdAndIsActiveTrue(Role role, UUID branchId);
-
     @Query("SELECT COUNT(u) FROM UserEntity u WHERE u.role = :role")
     long countByRole(@Param("role") Role role);
-
     boolean existsByUserName(String userName);
     boolean existsByPhoneNumber(String phoneNumber);
+    Optional<UserEntity> findByEmail(String email);
+    boolean existsByEmail(String email);
 }
