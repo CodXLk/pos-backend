@@ -11,6 +11,8 @@ public interface VehicleService {
     VehicleEntity createVehicle(CreateVehicleRequest request);
     List<VehicleResponse> getVehiclesByCustomer(UUID customerId);
     List<VehicleResponse> getVehiclesByCompany(UUID companyId);
+    List<VehicleResponse> getVehiclesByBranch(UUID branchId); // NEW METHOD
+    List<VehicleResponse> getAllVehicles(); // NEW METHOD
     VehicleResponse getVehicleById(UUID id);
     VehicleResponse getVehicleByNumber(String vehicleNumber);
     List<VehicleResponse> searchVehiclesByNumber(String vehicleNumber);

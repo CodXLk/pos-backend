@@ -10,6 +10,7 @@ public interface ItemService {
     ItemEntity createItem(CreateItemRequest request);
     List<ItemEntity> getItemsByCategory(UUID categoryId);
     List<ItemEntity> getItemsByCompany(UUID companyId);
+    List<ItemEntity> getItemsByBranch(UUID branchId); // NEW METHOD
     ItemEntity getItemById(UUID id);
     ItemEntity updateItem(UUID id, CreateItemRequest request);
     void deactivateItem(UUID id);

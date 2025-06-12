@@ -1,20 +1,27 @@
 package com.codX.pos.auth;
 
 import com.codX.pos.config.JwtService;
+import com.codX.pos.context.UserContext;
+import com.codX.pos.dto.UserContextDto;
+import com.codX.pos.dto.request.ChangePasswordRequest;
 import com.codX.pos.entity.Role;
 import com.codX.pos.entity.UserEntity;
+import com.codX.pos.exception.UnauthorizedException;
 import com.codX.pos.exception.UserNameAlreadyExistException;
 import com.codX.pos.exception.UserNameOrPasswordIncorrectException;
 import com.codX.pos.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthenticationService {
@@ -108,5 +115,28 @@ public class AuthenticationService {
         } catch (AuthenticationException ex) {
             throw new UserNameOrPasswordIncorrectException("Username or Password is incorrect");
         }
+    }
+
+    @Transactional
+    public void changePassword(ChangePasswordRequest request) {
+        UserContextDto currentUser = UserContext.getUserContext();
+        if (currentUser == null) {
+            throw new UnauthorizedException("Authentication required");
+        }
+
+        UserEntity user = userRepository.findById(currentUser.userId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Verify current password
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
+            throw new UserNameOrPasswordIncorrectException("Current password is incorrect");
+        }
+
+        // Update password
+        user.setPassword(passwordEncoder.encode(request.newPassword()));
+        user.setDefaultPassword(false);
+        userRepository.save(user);
+
+        log.info("Password changed successfully for user: {}", user.getUsername());
     }
 }

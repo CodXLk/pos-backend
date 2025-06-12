@@ -8,46 +8,49 @@ import com.codX.pos.entity.UserEntity;
 import com.codX.pos.exception.UnauthorizedException;
 import com.codX.pos.exception.UserNameAlreadyExistException;
 import com.codX.pos.repository.UserRepository;
+import com.codX.pos.service.EmailService;
 import com.codX.pos.service.UserService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
     private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     private static final SecureRandom RANDOM = new SecureRandom();
 
     @Override
+    @Transactional
     public UserEntity createUser(CreateUserRequest request) {
         UserContextDto currentUser = UserContext.getUserContext();
 
         // Validate permissions based on current user role
         validateUserCreationPermissions(currentUser, request.role());
 
-        if (userRepository.existsByUserName(request.userName())) {
-            throw new UserNameAlreadyExistException("Username already exists");
-        }
+        // Validate for duplicates
+        validateUserUniqueness(request, null);
 
-        if (userRepository.existsByPhoneNumber(request.phoneNumber())) {
-            throw new UserNameAlreadyExistException("Phone number already exists");
-        }
-
+        String defaultPassword = generateDefaultPassword();
         UserEntity userEntity = UserEntity.builder()
                 .firstName(request.firstName())
                 .lastName(request.lastName())
                 .userName(request.userName())
                 .phoneNumber(request.phoneNumber())
-                .password(passwordEncoder.encode(generateDefaultPassword()))
+                .email(request.email())
+                .password(passwordEncoder.encode(defaultPassword))
                 .role(request.role())
                 .companyId(determineCompanyId(currentUser, request))
                 .branchId(determineBranchId(currentUser, request))
@@ -55,14 +58,21 @@ public class UserServiceImpl implements UserService {
                 .isActive(true)
                 .build();
 
-        return userRepository.save(userEntity);
+        UserEntity savedUser = userRepository.save(userEntity);
+
+        // Send welcome email if email is provided
+        sendWelcomeEmailIfProvided(request.email(), request.firstName(), defaultPassword);
+
+        log.info("User created successfully: {} with role: {}", savedUser.getUsername(), savedUser.getRole());
+        return savedUser;
     }
 
     @Override
+    @Transactional
     public UserEntity createSuperAdmin(CreateUserRequest request) {
         UserContextDto currentUser = UserContext.getUserContext();
 
-        // Only existing super admin can create another super admin
+        // Only existing super admin can create another super admin, or initial creation
         if (currentUser != null && currentUser.role() != Role.SUPER_ADMIN) {
             throw new UnauthorizedException("Only Super Admin can create another Super Admin");
         }
@@ -72,23 +82,29 @@ public class UserServiceImpl implements UserService {
             throw new UnauthorizedException("Super Admin already exists");
         }
 
-        if (userRepository.existsByUserName(request.userName())) {
-            throw new UserNameAlreadyExistException("Username already exists");
-        }
+        // Validate for duplicates
+        validateUserUniqueness(request, null);
 
+        String defaultPassword = generateDefaultPassword();
         UserEntity userEntity = UserEntity.builder()
                 .firstName(request.firstName())
                 .lastName(request.lastName())
                 .userName(request.userName())
                 .phoneNumber(request.phoneNumber())
-                .password(passwordEncoder.encode(generateDefaultPassword()))
                 .email(request.email())
+                .password(passwordEncoder.encode(defaultPassword))
                 .role(Role.SUPER_ADMIN)
                 .isDefaultPassword(true)
                 .isActive(true)
                 .build();
 
-        return userRepository.save(userEntity);
+        UserEntity savedUser = userRepository.save(userEntity);
+
+        // Send welcome email if email is provided
+        sendWelcomeEmailIfProvided(request.email(), request.firstName(), defaultPassword);
+
+        log.info("Super Admin created successfully: {}", savedUser.getUsername());
+        return savedUser;
     }
 
     @Override
@@ -116,7 +132,6 @@ public class UserServiceImpl implements UserService {
             validateBranchAccess(currentUser, branchId);
             return userRepository.findByRoleAndBranchIdAndIsActiveTrue(role, branchId);
         }
-
         throw new UnauthorizedException("Invalid access parameters");
     }
 
@@ -130,6 +145,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional
     public UserEntity updateUser(UUID id, CreateUserRequest request) {
         UserEntity existingUser = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -138,14 +154,20 @@ public class UserServiceImpl implements UserService {
         // Validate access permissions
         validateUserUpdatePermissions(currentUser, existingUser);
 
+        // Validate for duplicates (excluding current user)
+        validateUserUniqueness(request, existingUser);
+
         existingUser.setFirstName(request.firstName());
         existingUser.setLastName(request.lastName());
+        existingUser.setUserName(request.userName());
         existingUser.setPhoneNumber(request.phoneNumber());
+        existingUser.setEmail(request.email());
 
         return userRepository.save(existingUser);
     }
 
     @Override
+    @Transactional
     public void deactivateUser(UUID id) {
         UserEntity user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -155,16 +177,86 @@ public class UserServiceImpl implements UserService {
 
         user.setActive(false);
         userRepository.save(user);
+        log.info("User deactivated: {}", user.getUsername());
     }
 
     @Override
     public String generateDefaultPassword() {
-//        StringBuilder password = new StringBuilder(8);
-//        for (int i = 0; i < 8; i++) {
-//            password.append(CHARACTERS.charAt(RANDOM.nextInt(CHARACTERS.length())));
-//        }
-//        return password.toString();
+        // For development, use simple password
         return "12345678";
+
+        // For production, use random password generation
+        // StringBuilder password = new StringBuilder(8);
+        // for (int i = 0; i < 8; i++) {
+        //     password.append(CHARACTERS.charAt(RANDOM.nextInt(CHARACTERS.length())));
+        // }
+        // return password.toString();
+    }
+
+    /**
+     * Validates that username, phone number, and email are unique
+     * @param request The user request containing the data to validate
+     * @param existingUser The existing user (for updates) or null (for creation)
+     */
+    private void validateUserUniqueness(CreateUserRequest request, UserEntity existingUser) {
+        // Check for existing username
+        if (isFieldDuplicate(request.userName(),
+                existingUser != null ? existingUser.getUsername() : null,
+                userRepository::existsByUserName)) {
+            throw new UserNameAlreadyExistException("Username already exists");
+        }
+
+        // Check for existing phone number
+        if (isFieldDuplicate(request.phoneNumber(),
+                existingUser != null ? existingUser.getPhoneNumber() : null,
+                userRepository::existsByPhoneNumber)) {
+            throw new UserNameAlreadyExistException("Phone number already exists");
+        }
+
+        // Check for existing email
+        if (request.email() != null && !request.email().trim().isEmpty()) {
+            if (isFieldDuplicate(request.email(),
+                    existingUser != null ? existingUser.getEmail() : null,
+                    userRepository::existsByEmail)) {
+                throw new UserNameAlreadyExistException("Email already exists");
+            }
+        }
+    }
+
+    /**
+     * Helper method to check if a field value is duplicate
+     * @param newValue The new value to check
+     * @param currentValue The current value (for updates) or null (for creation)
+     * @param existsFunction Function to check if the value exists in database
+     * @return true if duplicate, false otherwise
+     */
+    private boolean isFieldDuplicate(String newValue, String currentValue,
+                                     java.util.function.Function<String, Boolean> existsFunction) {
+        // If it's an update and the value hasn't changed, it's not a duplicate
+        if (currentValue != null && currentValue.equals(newValue)) {
+            return false;
+        }
+
+        // Check if the new value already exists in database
+        return existsFunction.apply(newValue);
+    }
+
+    /**
+     * Sends welcome email if email is provided
+     * @param email The email address
+     * @param firstName The user's first name
+     * @param password The generated password
+     */
+    private void sendWelcomeEmailIfProvided(String email, String firstName, String password) {
+        if (email != null && !email.trim().isEmpty()) {
+            try {
+                emailService.sendWelcomeEmail(email, firstName, password);
+                log.info("Welcome email sent successfully to: {}", email);
+            } catch (Exception e) {
+                log.warn("Failed to send welcome email to: {}", email, e);
+                // Don't fail user creation if email fails
+            }
+        }
     }
 
     private void validateUserCreationPermissions(UserContextDto currentUser, Role roleToCreate) {
@@ -243,7 +335,8 @@ public class UserServiceImpl implements UserService {
                 }
                 break;
             case POS_USER:
-                if (!currentUser.branchId().equals(targetUser.getBranchId()) || !targetUser.getRole().equals(Role.CUSTOMER)) {
+                if (!currentUser.branchId().equals(targetUser.getBranchId()) ||
+                        !targetUser.getRole().equals(Role.CUSTOMER)) {
                     throw new UnauthorizedException("Only can update customers with same branch");
                 }
                 break;
@@ -267,14 +360,13 @@ public class UserServiceImpl implements UserService {
                 }
                 break;
             case POS_USER:
-                if (!EnumSet.of(Role.CUSTOMER, Role.EMPLOYEE).contains(targetUser.getRole()) || !currentUser.branchId().equals(targetUser.getBranchId())) {
+                if (!EnumSet.of(Role.CUSTOMER, Role.EMPLOYEE).contains(targetUser.getRole()) ||
+                        !currentUser.branchId().equals(targetUser.getBranchId())) {
                     throw new UnauthorizedException("Only can get customers and employees with same branch");
                 }
                 break;
             default:
                 throw new UnauthorizedException("Insufficient permissions to get user");
-
-
         }
     }
 }

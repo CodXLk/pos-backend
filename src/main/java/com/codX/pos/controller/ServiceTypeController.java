@@ -69,6 +69,26 @@ public class ServiceTypeController {
         );
     }
 
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'COMPANY_ADMIN', 'BRANCH_ADMIN', 'POS_USER')")
+    @Operation(
+            summary = "Get service type by ID",
+            description = "Retrieve a specific service type by its ID"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Service type retrieved successfully"),
+            @ApiResponse(responseCode = "404", description = "Service type not found"),
+            @ApiResponse(responseCode = "403", description = "Insufficient permissions")
+    })
+    public ResponseEntity<?> getServiceTypeById(
+            @Parameter(description = "Service Type ID") @PathVariable UUID id) {
+        ServiceTypeEntity serviceType = serviceTypeService.getServiceTypeById(id);
+        return new ResponseEntity<>(
+                new StandardResponse(200, serviceType, "Service type retrieved successfully"),
+                HttpStatus.OK
+        );
+    }
+
     @GetMapping("/category/{categoryId}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'COMPANY_ADMIN', 'BRANCH_ADMIN', 'POS_USER')")
     @Operation(
@@ -95,6 +115,26 @@ public class ServiceTypeController {
         List<ServiceTypeEntity> serviceTypes = serviceTypeService.getServiceTypesByCompany(companyId);
         return new ResponseEntity<>(
                 new StandardResponse(200, serviceTypes, "Service types retrieved successfully"),
+                HttpStatus.OK
+        );
+    }
+
+    @GetMapping("/branch/{branchId}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'COMPANY_ADMIN', 'BRANCH_ADMIN', 'POS_USER')")
+    @Operation(
+            summary = "Get service types by branch",
+            description = "Retrieve all service types for a specific branch. Access controlled based on user role and hierarchy."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Branch service types retrieved successfully"),
+            @ApiResponse(responseCode = "403", description = "Insufficient permissions"),
+            @ApiResponse(responseCode = "404", description = "Branch not found")
+    })
+    public ResponseEntity<?> getServiceTypesByBranch(
+            @Parameter(description = "Branch ID") @PathVariable UUID branchId) {
+        List<ServiceTypeEntity> serviceTypes = serviceTypeService.getServiceTypesByBranch(branchId);
+        return new ResponseEntity<>(
+                new StandardResponse(200, serviceTypes, "Branch service types retrieved successfully"),
                 HttpStatus.OK
         );
     }
