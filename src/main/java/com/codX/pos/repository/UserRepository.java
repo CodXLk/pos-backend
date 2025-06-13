@@ -14,6 +14,7 @@ import java.util.UUID;
 @Repository
 public interface UserRepository extends JpaRepository<UserEntity, UUID> {
     Optional<UserEntity> findByUserName(String userName);
+    Optional<UserEntity> findByIdAndIsActiveTrue(UUID id);
     Optional<UserEntity> findByPhoneNumber(String phoneNumber);
     List<UserEntity> findByCompanyIdAndIsActiveTrue(UUID companyId);
     List<UserEntity> findByBranchIdAndIsActiveTrue(UUID branchId);

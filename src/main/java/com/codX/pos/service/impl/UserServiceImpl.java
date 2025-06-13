@@ -122,7 +122,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserEntity getUserById(UUID id) {
-        UserEntity userEntity = userRepository.findById(id)
+        UserEntity userEntity = userRepository.findByIdAndIsActiveTrue(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         UserContextDto currentUser = UserContext.getUserContext();
         validateGetUserPermissions(currentUser, userEntity);
