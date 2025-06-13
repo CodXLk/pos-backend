@@ -14,7 +14,7 @@ import java.util.UUID;
         {
             "name": "Main Branch",
             "address": "456 Main Street, City",
-            "contactNumber": "+1234567891",
+            "contactNumber": "+94712345678",
             "companyId": "123e4567-e89b-12d3-a456-426614174000",
             "branchAdminId": "123e4567-e89b-12d3-a456-426614174002"
         }
@@ -46,12 +46,12 @@ public record Branch(
         String address,
 
         @NotBlank(message = "Contact number is required")
-        @Pattern(regexp = "^\\+?[1-9]\\d{1,14}$", message = "Invalid phone number format")
+        @Pattern(regexp = "^\\+?94\\d{9}$", message = "Invalid phone number format")
         @Schema(
                 description = "Branch contact phone number",
-                example = "+1234567891",
+                example = "+94712345678",
                 required = true,
-                pattern = "^\\+?[1-9]\\d{1,14}$"
+                pattern = "^\\+?94\\d{9}$"
         )
         String contactNumber,
 

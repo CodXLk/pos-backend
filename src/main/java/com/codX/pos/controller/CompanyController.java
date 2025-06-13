@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -52,6 +53,7 @@ public class CompanyController {
             @ApiResponse(responseCode = "400", description = "Invalid input data")
     })
     public ResponseEntity<?> create(
+            @Valid
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "Company creation details",
                     required = true,
@@ -131,7 +133,7 @@ public class CompanyController {
     public ResponseEntity<?> updateCompany(
             @Parameter(description = "Company ID", example = "123e4567-e89b-12d3-a456-426614174000")
             @PathVariable UUID id,
-            @RequestBody Company company) {
+            @Valid @RequestBody Company company) {
         CompanyEntity updatedCompany = companyService.updateCompany(id, company);
         return new ResponseEntity<>(
                 new StandardResponse(200, updatedCompany, "Company updated successfully"),

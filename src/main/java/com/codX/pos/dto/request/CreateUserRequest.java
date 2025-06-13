@@ -15,7 +15,7 @@ import java.util.UUID;
             "firstName": "Jane",
             "lastName": "Smith",
             "userName": "janesmith",
-            "phoneNumber": "+1234567890",
+            "phoneNumber": "+94712345678",
             "email": "john.doe@example.com",
             "role": "BRANCH_ADMIN",
             "companyId": "123e4567-e89b-12d3-a456-426614174000",
@@ -60,12 +60,12 @@ public record CreateUserRequest(
         String userName,
 
         @NotBlank(message = "Phone number is required")
-        @Pattern(regexp = "^\\+?[1-9]\\d{1,14}$", message = "Invalid phone number format")
+        @Pattern(regexp = "^\\+?94\\d{9}$", message = "Invalid phone number format")
         @Schema(
                 description = "Phone number for OTP verification (international format preferred)",
-                example = "+1234567890",
+                example = "+94712345678",
                 required = true,
-                pattern = "^\\+?[1-9]\\d{1,14}$"
+                pattern = "^\\+?94\\d{9}$"
         )
         String phoneNumber,
 

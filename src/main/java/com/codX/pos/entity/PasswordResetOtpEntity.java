@@ -15,8 +15,8 @@ import java.util.UUID;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "otp_records")
-public class OtpEntity {
+@Table(name = "password_reset_otps")
+public class PasswordResetOtpEntity {
 
     @Id
     @GenericGenerator(name = "uuid", strategy = "uuid2")
@@ -24,14 +24,23 @@ public class OtpEntity {
     @Column(columnDefinition = "BINARY(16)")
     private UUID id;
 
-    private String phoneNumber;
-    private String otpCode;
+    @Column(nullable = false)
+    private String email;
+
+    @Column(nullable = false)
+    private String otp;
+
+    @Column(nullable = false)
     private LocalDateTime expiryTime;
-    private boolean isUsed;
-    private String purpose; // PASSWORD_RESET, PHONE_VERIFICATION
 
-    @Column(columnDefinition = "BINARY(16)")
-    private UUID userId;
+    @Column(nullable = false)
+    private boolean isUsed = false;
 
-    private LocalDateTime createdDate;
+    @Column(nullable = false)
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+    }
 }

@@ -17,7 +17,7 @@ import java.util.UUID;
             "email": "admin@techsolutions.com",
             "address": "123 Business Street, City",
             "logoUrl": "https://example.com/logo.png",
-            "contactNumber": "+1234567890",
+            "contactNumber": "+94712345678",
             "status": "ACTIVE"
         }
         """
@@ -60,10 +60,10 @@ public record Company(
         )
         String logoUrl,
 
-        @Pattern(regexp = "^\\+?[1-9]\\d{1,14}$", message = "Invalid phone number format")
+        @Pattern(regexp = "^\\+?94\\d{9}$", message = "Invalid phone number format")
         @Schema(
                 description = "Company contact phone number",
-                example = "+1234567890",
+                example = "+94712345678",
                 pattern = "^\\+?[1-9]\\d{1,14}$"
         )
         String contactNumber,
