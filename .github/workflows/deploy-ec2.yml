@@ -24,7 +24,7 @@ jobs:
         run: mvn clean test
 
       - name: Build application
-        run: mvn clean package -DskipTests
+        run: mvn clean package -DskipTests=true
 
       - name: Build Docker image
         run: |
