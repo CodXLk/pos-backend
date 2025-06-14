@@ -29,6 +29,6 @@ public record ItemDto(
         @Schema(description = "Minimum stock level")
         Integer minStockLevel,
 
-        @Schema(description = "Item category ID")
-        UUID itemCategoryId
+        @Schema(description = "Item category details")
+        ItemCategoryDto itemCategory
 ) {}

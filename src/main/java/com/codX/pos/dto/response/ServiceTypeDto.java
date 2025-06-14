@@ -23,6 +23,6 @@ public record ServiceTypeDto(
         @Schema(description = "Estimated duration in minutes")
         Integer estimatedDurationMinutes,
 
-        @Schema(description = "Service category ID")
-        UUID serviceCategoryId
+        @Schema(description = "Service category details")
+        ServiceCategoryDto serviceCategory
 ) {}

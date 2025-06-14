@@ -4,21 +4,27 @@ import com.codX.pos.context.UserContext;
 import com.codX.pos.dto.UserContextDto;
 import com.codX.pos.dto.request.CreateServiceRecordRequest;
 import com.codX.pos.dto.request.ServiceDetailRequest;
-import com.codX.pos.dto.response.ItemDto;
 import com.codX.pos.dto.response.ServiceDetailResponse;
 import com.codX.pos.dto.response.ServiceRecordResponse;
 import com.codX.pos.dto.response.ServiceTypeDto;
+import com.codX.pos.dto.response.ItemDto;
+import com.codX.pos.dto.response.ServiceCategoryDto;
+import com.codX.pos.dto.response.ItemCategoryDto;
 import com.codX.pos.entity.Role;
 import com.codX.pos.entity.ServiceRecordDetailEntity;
 import com.codX.pos.entity.ServiceRecordEntity;
 import com.codX.pos.entity.ServiceStatus;
 import com.codX.pos.entity.ServiceTypeEntity;
 import com.codX.pos.entity.ItemEntity;
+import com.codX.pos.entity.ServiceCategoryEntity;
+import com.codX.pos.entity.ItemCategoryEntity;
 import com.codX.pos.exception.UnauthorizedException;
 import com.codX.pos.repository.ServiceDetailRepository;
 import com.codX.pos.repository.ServiceRecordRepository;
 import com.codX.pos.repository.ServiceTypeRepository;
 import com.codX.pos.repository.ItemRepository;
+import com.codX.pos.repository.ServiceCategoryRepository;
+import com.codX.pos.repository.ItemCategoryRepository;
 import com.codX.pos.service.ServiceRecordService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -38,6 +44,8 @@ public class ServiceRecordServiceImpl implements ServiceRecordService {
     private final ServiceDetailRepository serviceDetailRepository;
     private final ServiceTypeRepository serviceTypeRepository;
     private final ItemRepository itemRepository;
+    private final ServiceCategoryRepository serviceCategoryRepository;
+    private final ItemCategoryRepository itemCategoryRepository;
 
     @Override
     @Transactional
@@ -201,34 +209,59 @@ public class ServiceRecordServiceImpl implements ServiceRecordService {
                 .build();
     }
 
+    // Modified method to include full details with categories
     private ServiceDetailResponse mapServiceDetailToResponse(ServiceRecordDetailEntity serviceDetail) {
         UserContextDto currentUser = UserContext.getUserContext();
 
+        // Fetch service type details
         ServiceTypeEntity serviceType = null;
+        ServiceCategoryEntity serviceCategory = null;
         if (serviceDetail.getServiceTypeId() != null) {
             serviceType = serviceTypeRepository.findByIdAndCompanyIdAndIsActiveTrue(
                             serviceDetail.getServiceTypeId(), currentUser.companyId())
                     .orElse(null);
+
+            // Fetch service category details if service type exists
+            if (serviceType != null && serviceType.getServiceCategoryId() != null) {
+                serviceCategory = serviceCategoryRepository.findByIdAndCompanyIdAndIsActiveTrue(
+                                serviceType.getServiceCategoryId(), currentUser.companyId())
+                        .orElse(null);
+            }
         }
 
+        // Fetch item details
         ItemEntity item = null;
+        ItemCategoryEntity itemCategory = null;
         if (serviceDetail.getItemId() != null) {
             item = itemRepository.findByIdAndCompanyIdAndIsActiveTrue(
                             serviceDetail.getItemId(), currentUser.companyId())
                     .orElse(null);
+
+            // Fetch item category details if item exists
+            if (item != null && item.getItemCategoryId() != null) {
+                itemCategory = itemCategoryRepository.findByIdAndCompanyIdAndIsActiveTrue(
+                                item.getItemCategoryId(), currentUser.companyId())
+                        .orElse(null);
+            }
         }
 
         return ServiceDetailResponse.builder()
                 .id(serviceDetail.getId())
                 .serviceRecordId(serviceDetail.getServiceRecordId())
+                // Include full service type details with category
                 .serviceType(serviceType != null ? ServiceTypeDto.builder()
                         .id(serviceType.getId())
                         .name(serviceType.getName())
                         .description(serviceType.getDescription())
                         .basePrice(serviceType.getBasePrice())
                         .estimatedDurationMinutes(serviceType.getEstimatedDurationMinutes())
-                        .serviceCategoryId(serviceType.getServiceCategoryId())
+                        .serviceCategory(serviceCategory != null ? ServiceCategoryDto.builder()
+                                .id(serviceCategory.getId())
+                                .name(serviceCategory.getName())
+                                .description(serviceCategory.getDescription())
+                                .build() : null)
                         .build() : null)
+                // Include full item details with category
                 .item(item != null ? ItemDto.builder()
                         .id(item.getId())
                         .name(item.getName())
@@ -237,7 +270,11 @@ public class ServiceRecordServiceImpl implements ServiceRecordService {
                         .unit(item.getUnit())
                         .stockQuantity(item.getStockQuantity())
                         .minStockLevel(item.getMinStockLevel())
-                        .itemCategoryId(item.getItemCategoryId())
+                        .itemCategory(itemCategory != null ? ItemCategoryDto.builder()
+                                .id(itemCategory.getId())
+                                .name(itemCategory.getName())
+                                .description(itemCategory.getDescription())
+                                .build() : null)
                         .build() : null)
                 .quantity(serviceDetail.getQuantity())
                 .unitPrice(serviceDetail.getUnitPrice())
