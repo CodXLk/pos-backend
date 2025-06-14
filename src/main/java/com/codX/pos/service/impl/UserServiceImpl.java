@@ -124,6 +124,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public List<UserEntity> getUsersByRole(Role role, UUID companyId, UUID branchId) {
         UserContextDto currentUser = UserContext.getUserContext();
+        validateGetUserByRolePermissions(currentUser, role);
 
         if (companyId != null) {
             validateCompanyAccess(currentUser, companyId);
@@ -305,6 +306,9 @@ public class UserServiceImpl implements UserService {
     }
 
     private void validateCompanyAccess(UserContextDto currentUser, UUID companyId) {
+        if(currentUser.role() == Role.BRANCH_ADMIN) {
+            throw new UnauthorizedException("Access denied to company data");
+        }
         if (currentUser.role() != Role.SUPER_ADMIN && !currentUser.companyId().equals(companyId)) {
             throw new UnauthorizedException("Access denied to company data");
         }
@@ -360,13 +364,32 @@ public class UserServiceImpl implements UserService {
                 }
                 break;
             case POS_USER:
-                if (!EnumSet.of(Role.CUSTOMER, Role.EMPLOYEE).contains(targetUser.getRole()) ||
+                if (!EnumSet.of(Role.CUSTOMER, Role.EMPLOYEE,Role.POS_USER).contains(targetUser.getRole()) ||
                         !currentUser.branchId().equals(targetUser.getBranchId())) {
                     throw new UnauthorizedException("Only can get customers and employees with same branch");
                 }
                 break;
             default:
                 throw new UnauthorizedException("Insufficient permissions to get user");
+        }
+    }
+    private void validateGetUserByRolePermissions(UserContextDto user, Role role) {
+        switch (user.role()) {
+            case SUPER_ADMIN:
+                break;
+            case COMPANY_ADMIN:
+                if(EnumSet.of(Role.SUPER_ADMIN, Role.COMPANY_ADMIN).contains(role)) {
+                     throw new UnauthorizedException("Cannot get admin and company admin");
+                }
+                break;
+            case BRANCH_ADMIN:
+                if(EnumSet.of(Role.SUPER_ADMIN, Role.COMPANY_ADMIN,Role.BRANCH_ADMIN).contains(role)) {
+                    throw new UnauthorizedException("Cannot get admin and company admin and branch admin");
+                }
+                break;
+            default:
+                throw new UnauthorizedException("Insufficient permissions to get user");
+
         }
     }
 }
