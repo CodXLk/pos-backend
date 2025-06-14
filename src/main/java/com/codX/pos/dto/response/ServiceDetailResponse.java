@@ -16,11 +16,11 @@ public record ServiceDetailResponse(
         @Schema(description = "Service record ID")
         UUID serviceRecordId,
 
-        @Schema(description = "Service type ID")
-        UUID serviceTypeId,
+        @Schema(description = "Service type details")
+        ServiceTypeDto serviceType,
 
-        @Schema(description = "Item ID")
-        UUID itemId,
+        @Schema(description = "Item details")
+        ItemDto item,
 
         @Schema(description = "Quantity")
         Integer quantity,
