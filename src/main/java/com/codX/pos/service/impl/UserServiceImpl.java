@@ -364,7 +364,7 @@ public class UserServiceImpl implements UserService {
                 }
                 break;
             case POS_USER:
-                if (!EnumSet.of(Role.CUSTOMER, Role.EMPLOYEE).contains(targetUser.getRole()) ||
+                if (!EnumSet.of(Role.CUSTOMER, Role.EMPLOYEE,Role.POS_USER).contains(targetUser.getRole()) ||
                         !currentUser.branchId().equals(targetUser.getBranchId())) {
                     throw new UnauthorizedException("Only can get customers and employees with same branch");
                 }
