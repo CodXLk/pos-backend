@@ -6,13 +6,25 @@ import com.codX.pos.dto.request.CreateServiceRecordRequest;
 import com.codX.pos.dto.request.ServiceDetailRequest;
 import com.codX.pos.dto.response.ServiceDetailResponse;
 import com.codX.pos.dto.response.ServiceRecordResponse;
+import com.codX.pos.dto.response.ServiceTypeDto;
+import com.codX.pos.dto.response.ItemDto;
+import com.codX.pos.dto.response.ServiceCategoryDto;
+import com.codX.pos.dto.response.ItemCategoryDto;
 import com.codX.pos.entity.Role;
 import com.codX.pos.entity.ServiceRecordDetailEntity;
 import com.codX.pos.entity.ServiceRecordEntity;
 import com.codX.pos.entity.ServiceStatus;
+import com.codX.pos.entity.ServiceTypeEntity;
+import com.codX.pos.entity.ItemEntity;
+import com.codX.pos.entity.ServiceCategoryEntity;
+import com.codX.pos.entity.ItemCategoryEntity;
 import com.codX.pos.exception.UnauthorizedException;
 import com.codX.pos.repository.ServiceDetailRepository;
 import com.codX.pos.repository.ServiceRecordRepository;
+import com.codX.pos.repository.ServiceTypeRepository;
+import com.codX.pos.repository.ItemRepository;
+import com.codX.pos.repository.ServiceCategoryRepository;
+import com.codX.pos.repository.ItemCategoryRepository;
 import com.codX.pos.service.ServiceRecordService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -30,12 +42,15 @@ public class ServiceRecordServiceImpl implements ServiceRecordService {
 
     private final ServiceRecordRepository serviceRecordRepository;
     private final ServiceDetailRepository serviceDetailRepository;
+    private final ServiceTypeRepository serviceTypeRepository;
+    private final ItemRepository itemRepository;
+    private final ServiceCategoryRepository serviceCategoryRepository;
+    private final ItemCategoryRepository itemCategoryRepository;
 
     @Override
     @Transactional
     public ServiceRecordEntity createServiceRecord(CreateServiceRecordRequest request) {
         UserContextDto currentUser = UserContext.getUserContext();
-
         if (currentUser.role() != Role.POS_USER && currentUser.role() != Role.BRANCH_ADMIN &&
                 currentUser.role() != Role.COMPANY_ADMIN && currentUser.role() != Role.SUPER_ADMIN) {
             throw new UnauthorizedException("Insufficient permissions to create service record");
@@ -68,7 +83,6 @@ public class ServiceRecordServiceImpl implements ServiceRecordService {
             List<ServiceRecordDetailEntity> serviceDetails = request.serviceDetails().stream()
                     .map(detail -> createServiceDetailEntity(detail, savedServiceRecord.getId(), currentUser))
                     .collect(Collectors.toList());
-
             serviceDetailRepository.saveAll(serviceDetails);
         }
 
@@ -80,7 +94,6 @@ public class ServiceRecordServiceImpl implements ServiceRecordService {
         UserContextDto currentUser = UserContext.getUserContext();
         List<ServiceRecordEntity> serviceRecords = serviceRecordRepository
                 .findByVehicleIdAndCompanyIdOrderByServiceDateDesc(vehicleId, currentUser.companyId());
-
         return serviceRecords.stream()
                 .map(this::mapToResponseWithDetails)
                 .collect(Collectors.toList());
@@ -91,7 +104,6 @@ public class ServiceRecordServiceImpl implements ServiceRecordService {
         UserContextDto currentUser = UserContext.getUserContext();
         List<ServiceRecordEntity> serviceRecords = serviceRecordRepository
                 .findByCustomerIdAndCompanyIdOrderByServiceDateDesc(customerId, currentUser.companyId());
-
         return serviceRecords.stream()
                 .map(this::mapToResponseWithDetails)
                 .collect(Collectors.toList());
@@ -102,7 +114,6 @@ public class ServiceRecordServiceImpl implements ServiceRecordService {
         UserContextDto currentUser = UserContext.getUserContext();
         List<ServiceRecordEntity> serviceRecords = serviceRecordRepository
                 .findByDateRangeAndCompanyId(startDate, endDate, currentUser.companyId());
-
         return serviceRecords.stream()
                 .map(this::mapToResponseWithDetails)
                 .collect(Collectors.toList());
@@ -113,7 +124,6 @@ public class ServiceRecordServiceImpl implements ServiceRecordService {
         UserContextDto currentUser = UserContext.getUserContext();
         ServiceRecordEntity serviceRecord = serviceRecordRepository.findByIdAndCompanyId(id, currentUser.companyId())
                 .orElseThrow(() -> new RuntimeException("Service record not found"));
-
         return mapToResponseWithDetails(serviceRecord);
     }
 
@@ -142,7 +152,6 @@ public class ServiceRecordServiceImpl implements ServiceRecordService {
             List<ServiceRecordDetailEntity> serviceDetails = request.serviceDetails().stream()
                     .map(detail -> createServiceDetailEntity(detail, id, currentUser))
                     .collect(Collectors.toList());
-
             serviceDetailRepository.saveAll(serviceDetails);
         }
 
@@ -159,14 +168,12 @@ public class ServiceRecordServiceImpl implements ServiceRecordService {
 
         // Delete service details first
         serviceDetailRepository.deleteByServiceRecordId(id);
-
         // Delete service record
         serviceRecordRepository.delete(serviceRecord);
     }
 
     private ServiceRecordDetailEntity createServiceDetailEntity(ServiceDetailRequest detail, UUID serviceRecordId, UserContextDto currentUser) {
         BigDecimal totalPrice = detail.unitPrice().multiply(BigDecimal.valueOf(detail.quantity()));
-
         return ServiceRecordDetailEntity.builder()
                 .serviceRecordId(serviceRecordId)
                 .serviceTypeId(detail.serviceTypeId())
@@ -202,12 +209,73 @@ public class ServiceRecordServiceImpl implements ServiceRecordService {
                 .build();
     }
 
+    // Modified method to include full details with categories
     private ServiceDetailResponse mapServiceDetailToResponse(ServiceRecordDetailEntity serviceDetail) {
+        UserContextDto currentUser = UserContext.getUserContext();
+
+        // Fetch service type details
+        ServiceTypeEntity serviceType = null;
+        ServiceCategoryEntity serviceCategory = null;
+        if (serviceDetail.getServiceTypeId() != null) {
+            serviceType = serviceTypeRepository.findByIdAndCompanyIdAndIsActiveTrue(
+                            serviceDetail.getServiceTypeId(), currentUser.companyId())
+                    .orElse(null);
+
+            // Fetch service category details if service type exists
+            if (serviceType != null && serviceType.getServiceCategoryId() != null) {
+                serviceCategory = serviceCategoryRepository.findByIdAndCompanyIdAndIsActiveTrue(
+                                serviceType.getServiceCategoryId(), currentUser.companyId())
+                        .orElse(null);
+            }
+        }
+
+        // Fetch item details
+        ItemEntity item = null;
+        ItemCategoryEntity itemCategory = null;
+        if (serviceDetail.getItemId() != null) {
+            item = itemRepository.findByIdAndCompanyIdAndIsActiveTrue(
+                            serviceDetail.getItemId(), currentUser.companyId())
+                    .orElse(null);
+
+            // Fetch item category details if item exists
+            if (item != null && item.getItemCategoryId() != null) {
+                itemCategory = itemCategoryRepository.findByIdAndCompanyIdAndIsActiveTrue(
+                                item.getItemCategoryId(), currentUser.companyId())
+                        .orElse(null);
+            }
+        }
+
         return ServiceDetailResponse.builder()
                 .id(serviceDetail.getId())
                 .serviceRecordId(serviceDetail.getServiceRecordId())
-                .serviceTypeId(serviceDetail.getServiceTypeId())
-                .itemId(serviceDetail.getItemId())
+                // Include full service type details with category
+                .serviceType(serviceType != null ? ServiceTypeDto.builder()
+                        .id(serviceType.getId())
+                        .name(serviceType.getName())
+                        .description(serviceType.getDescription())
+                        .basePrice(serviceType.getBasePrice())
+                        .estimatedDurationMinutes(serviceType.getEstimatedDurationMinutes())
+                        .serviceCategory(serviceCategory != null ? ServiceCategoryDto.builder()
+                                .id(serviceCategory.getId())
+                                .name(serviceCategory.getName())
+                                .description(serviceCategory.getDescription())
+                                .build() : null)
+                        .build() : null)
+                // Include full item details with category
+                .item(item != null ? ItemDto.builder()
+                        .id(item.getId())
+                        .name(item.getName())
+                        .description(item.getDescription())
+                        .unitPrice(item.getUnitPrice())
+                        .unit(item.getUnit())
+                        .stockQuantity(item.getStockQuantity())
+                        .minStockLevel(item.getMinStockLevel())
+                        .itemCategory(itemCategory != null ? ItemCategoryDto.builder()
+                                .id(itemCategory.getId())
+                                .name(itemCategory.getName())
+                                .description(itemCategory.getDescription())
+                                .build() : null)
+                        .build() : null)
                 .quantity(serviceDetail.getQuantity())
                 .unitPrice(serviceDetail.getUnitPrice())
                 .totalPrice(serviceDetail.getTotalPrice())
