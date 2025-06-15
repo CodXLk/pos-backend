@@ -48,6 +48,12 @@ public class ItemEntity {
     @Column(columnDefinition = "BINARY(16)", nullable = false)
     private UUID branchId;
 
+    @Column(precision = 5, scale = 2)
+    private BigDecimal defaultDiscountValue = BigDecimal.ZERO;
+
+    @Enumerated(EnumType.STRING)
+    private DiscountType defaultDiscountType = DiscountType.PERCENTAGE;
+
     @CreatedDate
     private LocalDateTime createdDate;
 
