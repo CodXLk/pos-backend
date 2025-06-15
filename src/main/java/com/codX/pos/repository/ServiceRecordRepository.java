@@ -17,6 +17,8 @@ public interface ServiceRecordRepository extends JpaRepository<ServiceRecordEnti
     List<ServiceRecordEntity> findByVehicleIdAndCompanyIdOrderByServiceDateDesc(UUID vehicleId, UUID companyId);
     List<ServiceRecordEntity> findByCustomerIdAndCompanyIdOrderByServiceDateDesc(UUID customerId, UUID companyId);
     List<ServiceRecordEntity> findByCompanyIdAndBranchIdOrderByServiceDateDesc(UUID companyId, UUID branchId);
+    List<ServiceRecordEntity> findByBranchIdOrderByServiceDateDesc(UUID branchId);
+    List<ServiceRecordEntity> findByServiceDateBetweenAndCompanyIdOrderByServiceDateDesc(LocalDateTime startDate, LocalDateTime endDate, UUID companyId); // ADD THIS METHOD
     Optional<ServiceRecordEntity> findByIdAndCompanyId(UUID id, UUID companyId);
     List<ServiceRecordEntity> findByStatusAndCompanyIdAndBranchId(ServiceStatus status, UUID companyId, UUID branchId);
 

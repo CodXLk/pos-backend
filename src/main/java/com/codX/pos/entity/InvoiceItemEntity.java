@@ -38,6 +38,18 @@ public class InvoiceItemEntity {
     private BigDecimal unitPrice;
     private BigDecimal totalPrice;
 
+    @Column(precision = 5, scale = 2)
+    private BigDecimal discountValue = BigDecimal.ZERO;
+
+    @Enumerated(EnumType.STRING)
+    private DiscountType discountType = DiscountType.PERCENTAGE;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal discountAmount = BigDecimal.ZERO;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal finalPrice;
+
     @Enumerated(EnumType.STRING)
     private InvoiceItemType type; // SERVICE, ITEM
 

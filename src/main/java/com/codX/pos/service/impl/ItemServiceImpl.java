@@ -3,6 +3,8 @@ package com.codX.pos.service.impl;
 import com.codX.pos.context.UserContext;
 import com.codX.pos.dto.UserContextDto;
 import com.codX.pos.dto.request.CreateItemRequest;
+import com.codX.pos.dto.request.DiscountRequest;
+import com.codX.pos.entity.DiscountType;
 import com.codX.pos.entity.ItemEntity;
 import com.codX.pos.entity.Role;
 import com.codX.pos.exception.UnauthorizedException;
@@ -11,6 +13,7 @@ import com.codX.pos.service.ItemService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,7 +32,6 @@ public class ItemServiceImpl implements ItemService {
             throw new UnauthorizedException("Only Branch Admin or above can create items");
         }
 
-        // Check if item name already exists in the branch
         if (itemRepository.existsByNameAndCompanyIdAndBranchId(
                 request.name(), currentUser.companyId(), currentUser.branchId())) {
             throw new RuntimeException("Item with name '" + request.name() + "' already exists in this branch");
@@ -43,6 +45,8 @@ public class ItemServiceImpl implements ItemService {
                 .stockQuantity(request.stockQuantity())
                 .minStockLevel(request.minStockLevel())
                 .itemCategoryId(request.itemCategoryId())
+                .defaultDiscountValue(BigDecimal.ZERO)
+                .defaultDiscountType(DiscountType.PERCENTAGE)
                 .companyId(currentUser.companyId())
                 .branchId(currentUser.branchId())
                 .isActive(true)
@@ -72,17 +76,13 @@ public class ItemServiceImpl implements ItemService {
     public List<ItemEntity> getItemsByBranch(UUID branchId) {
         UserContextDto currentUser = UserContext.getUserContext();
 
-        // Authorization logic based on role
         switch (currentUser.role()) {
             case SUPER_ADMIN:
-                // Super admin can access any branch
                 break;
             case COMPANY_ADMIN:
-                // Company admin can access branches within their company
                 break;
             case BRANCH_ADMIN:
             case POS_USER:
-                // Branch admin and POS user can only access their own branch
                 if (!currentUser.branchId().equals(branchId)) {
                     throw new UnauthorizedException("You can only access items from your own branch");
                 }
@@ -115,6 +115,23 @@ public class ItemServiceImpl implements ItemService {
         existingItem.setItemCategoryId(request.itemCategoryId());
 
         return itemRepository.save(existingItem);
+    }
+
+    @Override
+    public ItemEntity updateDefaultDiscount(UUID id, DiscountRequest discountRequest) {
+        UserContextDto currentUser = UserContext.getUserContext();
+
+        if (currentUser.role() != Role.BRANCH_ADMIN && currentUser.role() != Role.COMPANY_ADMIN &&
+                currentUser.role() != Role.SUPER_ADMIN) {
+            throw new UnauthorizedException("Only Branch Admin or above can update item discounts");
+        }
+
+        ItemEntity item = getItemById(id);
+
+        item.setDefaultDiscountValue(discountRequest.value() != null ? discountRequest.value() : BigDecimal.ZERO);
+        item.setDefaultDiscountType(discountRequest.type());
+
+        return itemRepository.save(item);
     }
 
     @Override

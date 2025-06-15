@@ -1,6 +1,8 @@
 package com.codX.pos.controller;
 
 import com.codX.pos.dto.request.CreateInvoiceRequest;
+import com.codX.pos.dto.request.UpdateInvoiceDiscountRequest;
+import com.codX.pos.dto.response.InvoicePreviewResponse;
 import com.codX.pos.dto.response.InvoiceResponse;
 import com.codX.pos.entity.InvoiceEntity;
 import com.codX.pos.entity.InvoiceStatus;
@@ -241,4 +243,93 @@ public class InvoiceController {
                 HttpStatus.OK
         );
     }
+
+    @PutMapping("/{id}/discounts")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'COMPANY_ADMIN', 'BRANCH_ADMIN', 'POS_USER')")
+    @Operation(
+            summary = "Update invoice discounts",
+            description = "Update discounts for entire invoice and individual items/services before payment"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Invoice discounts updated successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid discount data"),
+            @ApiResponse(responseCode = "404", description = "Invoice not found"),
+            @ApiResponse(responseCode = "409", description = "Invoice already paid or cannot be modified")
+    })
+    public ResponseEntity<StandardResponse<InvoiceResponse>> updateInvoiceDiscounts(
+            @Parameter(description = "Invoice ID") @PathVariable UUID id,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Discount update details",
+                    required = true,
+                    content = @Content(
+                            schema = @Schema(implementation = UpdateInvoiceDiscountRequest.class),
+                            examples = @ExampleObject(value = """
+            {
+                "invoiceDiscount": {
+                    "type": "PERCENTAGE",
+                    "value": 10.0,
+                    "description": "Loyalty customer discount"
+                },
+                "itemDiscounts": [
+                    {
+                        "itemId": "123e4567-e89b-12d3-a456-426614174001",
+                        "discount": {
+                            "type": "FIXED_AMOUNT",
+                            "value": 5.0,
+                            "description": "Bulk purchase discount"
+                        }
+                    }
+                ],
+                "serviceDiscounts": [
+                    {
+                        "serviceTypeId": "123e4567-e89b-12d3-a456-426614174002", 
+                        "discount": {
+                            "type": "PERCENTAGE",
+                            "value": 15.0,
+                            "description": "First-time service discount"
+                        }
+                    }
+                ]
+            }
+            """)
+                    )
+            )
+            @Valid @RequestBody UpdateInvoiceDiscountRequest request) {
+        InvoiceResponse invoice = invoiceService.updateInvoiceDiscounts(id, request);
+        return new ResponseEntity<>(
+                new StandardResponse<>(200, invoice, "Invoice discounts updated successfully"),
+                HttpStatus.OK
+        );
+    }
+
+    @GetMapping("/branch/{branchId}/with-defaults")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'COMPANY_ADMIN', 'BRANCH_ADMIN', 'POS_USER')")
+    @Operation(
+            summary = "Get invoices by branch with default discounts applied",
+            description = "Retrieve all invoices for a branch with default item and service discounts"
+    )
+    public ResponseEntity<StandardResponse<List<InvoiceResponse>>> getInvoicesByBranchWithDefaults(
+            @Parameter(description = "Branch ID") @PathVariable UUID branchId) {
+        List<InvoiceResponse> invoices = invoiceService.getInvoicesByBranchWithDefaults(branchId);
+        return new ResponseEntity<>(
+                new StandardResponse<>(200, invoices, "Branch invoices with defaults retrieved successfully"),
+                HttpStatus.OK
+        );
+    }
+
+    @PostMapping("/preview-with-discounts")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'COMPANY_ADMIN', 'BRANCH_ADMIN', 'POS_USER')")
+    @Operation(
+            summary = "Preview invoice with discounts",
+            description = "Preview invoice calculations with applied discounts before creation"
+    )
+    public ResponseEntity<StandardResponse<InvoicePreviewResponse>> previewInvoiceWithDiscounts(
+            @Valid @RequestBody CreateInvoiceRequest request) {
+        InvoicePreviewResponse preview = invoiceService.previewInvoiceWithDiscounts(request);
+        return new ResponseEntity<>(
+                new StandardResponse<>(200, preview, "Invoice preview generated successfully"),
+                HttpStatus.OK
+        );
+    }
+
 }

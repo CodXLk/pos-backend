@@ -3,8 +3,10 @@ package com.codX.pos.service.impl;
 import com.codX.pos.context.UserContext;
 import com.codX.pos.dto.UserContextDto;
 import com.codX.pos.dto.request.CreateInvoiceRequest;
+import com.codX.pos.dto.request.UpdateInvoiceDiscountRequest;
 import com.codX.pos.dto.response.InvoiceItemResponse;
 import com.codX.pos.dto.response.InvoiceResponse;
+import com.codX.pos.dto.response.InvoicePreviewResponse;
 import com.codX.pos.entity.*;
 import com.codX.pos.exception.UnauthorizedException;
 import com.codX.pos.repository.*;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -28,6 +31,7 @@ public class InvoiceServiceImpl implements InvoiceService {
     private final InvoiceItemRepository invoiceItemRepository;
     private final ServiceRecordRepository serviceRecordRepository;
     private final ItemRepository itemRepository;
+    private final ServiceTypeRepository serviceTypeRepository;
 
     @Override
     @Transactional
@@ -39,16 +43,13 @@ public class InvoiceServiceImpl implements InvoiceService {
             throw new UnauthorizedException("Insufficient permissions to create invoice");
         }
 
-        // Get service record
         ServiceRecordEntity serviceRecord = serviceRecordRepository.findByIdAndCompanyId(serviceRecordId, currentUser.companyId())
                 .orElseThrow(() -> new RuntimeException("Service record not found"));
 
-        // Check if invoice already exists for this service record
         if (invoiceRepository.findByServiceRecordIdAndCompanyId(serviceRecordId, currentUser.companyId()).isPresent()) {
             throw new RuntimeException("Invoice already exists for this service record");
         }
 
-        // Create invoice
         InvoiceEntity invoice = InvoiceEntity.builder()
                 .invoiceNumber(generateInvoiceNumber())
                 .invoiceDate(LocalDateTime.now())
@@ -58,13 +59,15 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .type(InvoiceType.SERVICE)
                 .status(InvoiceStatus.DRAFT)
                 .subtotal(serviceRecord.getTotalAmount())
-                .taxAmount(serviceRecord.getTotalAmount().multiply(new BigDecimal("0.10"))) // 10% tax
+                .taxAmount(serviceRecord.getTotalAmount().multiply(new BigDecimal("0.10")))
                 .discountAmount(BigDecimal.ZERO)
+                .overallDiscountValue(BigDecimal.ZERO)
+                .overallDiscountType(DiscountType.PERCENTAGE)
+                .overallDiscountAmount(BigDecimal.ZERO)
                 .companyId(currentUser.companyId())
                 .branchId(currentUser.branchId())
                 .build();
 
-        // Calculate total
         BigDecimal total = invoice.getSubtotal()
                 .add(invoice.getTaxAmount())
                 .subtract(invoice.getDiscountAmount());
@@ -72,7 +75,6 @@ public class InvoiceServiceImpl implements InvoiceService {
 
         InvoiceEntity savedInvoice = invoiceRepository.save(invoice);
 
-        // Update service record with invoice ID
         serviceRecord.setInvoiceId(savedInvoice.getId());
         serviceRecordRepository.save(serviceRecord);
 
@@ -84,7 +86,6 @@ public class InvoiceServiceImpl implements InvoiceService {
     public InvoiceEntity createItemSaleInvoice(CreateInvoiceRequest request) {
         UserContextDto currentUser = UserContext.getUserContext();
 
-        // Create invoice
         InvoiceEntity invoice = InvoiceEntity.builder()
                 .invoiceNumber(generateInvoiceNumber())
                 .invoiceDate(LocalDateTime.now())
@@ -93,28 +94,39 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .type(InvoiceType.ITEM_SALE)
                 .status(InvoiceStatus.DRAFT)
                 .discountAmount(request.discountAmount() != null ? request.discountAmount() : BigDecimal.ZERO)
+                .overallDiscountValue(BigDecimal.ZERO)
+                .overallDiscountType(DiscountType.PERCENTAGE)
+                .overallDiscountAmount(BigDecimal.ZERO)
                 .companyId(currentUser.companyId())
                 .branchId(currentUser.branchId())
                 .build();
 
         InvoiceEntity savedInvoice = invoiceRepository.save(invoice);
 
-        // Create invoice items
         BigDecimal subtotal = BigDecimal.ZERO;
         for (var itemRequest : request.items()) {
             ItemEntity item = itemRepository.findByIdAndCompanyIdAndIsActiveTrue(itemRequest.itemId(), currentUser.companyId())
                     .orElseThrow(() -> new RuntimeException("Item not found: " + itemRequest.itemId()));
 
-            BigDecimal itemTotal = item.getUnitPrice().multiply(new BigDecimal(itemRequest.quantity()));
-            subtotal = subtotal.add(itemTotal);
+            BigDecimal unitPrice = itemRequest.unitPrice() != null ? itemRequest.unitPrice() : item.getUnitPrice();
+            BigDecimal itemTotal = unitPrice.multiply(new BigDecimal(itemRequest.quantity()));
+
+            // Apply default discount
+            BigDecimal discountAmount = calculateDiscountAmount(itemTotal, item.getDefaultDiscountValue(), item.getDefaultDiscountType());
+            BigDecimal finalPrice = itemTotal.subtract(discountAmount);
+            subtotal = subtotal.add(finalPrice);
 
             InvoiceItemEntity invoiceItem = InvoiceItemEntity.builder()
                     .invoiceId(savedInvoice.getId())
                     .itemId(itemRequest.itemId())
                     .description(item.getName())
                     .quantity(itemRequest.quantity())
-                    .unitPrice(item.getUnitPrice())
+                    .unitPrice(unitPrice)
                     .totalPrice(itemTotal)
+                    .discountValue(item.getDefaultDiscountValue())
+                    .discountType(item.getDefaultDiscountType())
+                    .discountAmount(discountAmount)
+                    .finalPrice(finalPrice)
                     .type(InvoiceItemType.ITEM)
                     .companyId(currentUser.companyId())
                     .branchId(currentUser.branchId())
@@ -122,12 +134,10 @@ public class InvoiceServiceImpl implements InvoiceService {
 
             invoiceItemRepository.save(invoiceItem);
 
-            // Update item stock
             item.setStockQuantity(item.getStockQuantity() - itemRequest.quantity());
             itemRepository.save(item);
         }
 
-        // Calculate totals
         BigDecimal taxPercentage = request.taxPercentage() != null ? request.taxPercentage() : new BigDecimal("10.0");
         BigDecimal taxAmount = subtotal.multiply(taxPercentage.divide(new BigDecimal("100")));
         BigDecimal total = subtotal.add(taxAmount).subtract(invoice.getDiscountAmount());
@@ -142,8 +152,7 @@ public class InvoiceServiceImpl implements InvoiceService {
     @Override
     @Transactional
     public InvoiceEntity createMixedInvoice(CreateInvoiceRequest request) {
-        // Implementation for mixed invoices
-        return createItemSaleInvoice(request); // Simplified for now
+        return createItemSaleInvoice(request);
     }
 
     @Override
@@ -158,7 +167,6 @@ public class InvoiceServiceImpl implements InvoiceService {
         return mapToResponse(invoice, invoiceItems);
     }
 
-    // NEW METHOD: Get invoice by invoice number
     @Override
     public InvoiceResponse getInvoiceByNumber(String invoiceNumber) {
         UserContextDto currentUser = UserContext.getUserContext();
@@ -193,7 +201,8 @@ public class InvoiceServiceImpl implements InvoiceService {
             throw new UnauthorizedException("Access denied to company invoices");
         }
 
-        List<InvoiceEntity> invoices = invoiceRepository.findByCompanyIdAndBranchIdOrderByInvoiceDateDesc(companyId, currentUser.branchId());
+        // Use the correct method name
+        List<InvoiceEntity> invoices = invoiceRepository.findByCompanyIdOrderByInvoiceDateDesc(companyId);
 
         return invoices.stream()
                 .map(invoice -> {
@@ -203,22 +212,17 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .collect(Collectors.toList());
     }
 
-    // NEW METHOD: Get invoices by branch
     @Override
     public List<InvoiceResponse> getInvoicesByBranch(UUID branchId) {
         UserContextDto currentUser = UserContext.getUserContext();
 
-        // Authorization logic based on role
         switch (currentUser.role()) {
             case SUPER_ADMIN:
-                // Super admin can access any branch
                 break;
             case COMPANY_ADMIN:
-                // Company admin can access branches within their company
                 break;
             case BRANCH_ADMIN:
             case POS_USER:
-                // Branch admin and POS user can only access their own branch
                 if (!currentUser.branchId().equals(branchId)) {
                     throw new UnauthorizedException("You can only access invoices from your own branch");
                 }
@@ -233,6 +237,36 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .map(invoice -> {
                     List<InvoiceItemEntity> items = invoiceItemRepository.findByInvoiceIdAndCompanyId(invoice.getId(), currentUser.companyId());
                     return mapToResponse(invoice, items);
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<InvoiceResponse> getInvoicesByBranchWithDefaults(UUID branchId) {
+        UserContextDto currentUser = UserContext.getUserContext();
+
+        switch (currentUser.role()) {
+            case SUPER_ADMIN:
+                break;
+            case COMPANY_ADMIN:
+                break;
+            case BRANCH_ADMIN:
+            case POS_USER:
+                if (!currentUser.branchId().equals(branchId)) {
+                    throw new UnauthorizedException("You can only access invoices from your own branch");
+                }
+                break;
+            default:
+                throw new UnauthorizedException("Insufficient permissions to access branch invoices");
+        }
+
+        List<InvoiceEntity> invoices = invoiceRepository.findByBranchIdOrderByInvoiceDateDesc(branchId);
+
+        return invoices.stream()
+                .map(invoice -> {
+                    List<InvoiceItemEntity> items = invoiceItemRepository.findByInvoiceIdAndCompanyId(
+                            invoice.getId(), currentUser.companyId());
+                    return mapToResponseWithDefaults(invoice, items);
                 })
                 .collect(Collectors.toList());
     }
@@ -264,13 +298,106 @@ public class InvoiceServiceImpl implements InvoiceService {
     }
 
     @Override
+    @Transactional
+    public InvoiceResponse updateInvoiceDiscounts(UUID id, UpdateInvoiceDiscountRequest request) {
+        UserContextDto currentUser = UserContext.getUserContext();
+
+        InvoiceEntity invoice = invoiceRepository.findByIdAndCompanyId(id, currentUser.companyId())
+                .orElseThrow(() -> new RuntimeException("Invoice not found"));
+
+        if (invoice.getStatus() == InvoiceStatus.PAID || invoice.getStatus() == InvoiceStatus.CANCELLED) {
+            throw new RuntimeException("Cannot modify paid or cancelled invoice");
+        }
+
+        if (request.invoiceDiscount() != null) {
+            invoice.setOverallDiscountType(request.invoiceDiscount().type());
+            invoice.setOverallDiscountValue(request.invoiceDiscount().value());
+        }
+
+        List<InvoiceItemEntity> invoiceItems = invoiceItemRepository.findByInvoiceIdAndCompanyId(id, currentUser.companyId());
+
+        if (request.itemDiscounts() != null) {
+            request.itemDiscounts().forEach(itemDiscount -> {
+                invoiceItems.stream()
+                        .filter(item -> item.getItemId() != null && item.getItemId().equals(itemDiscount.itemId()))
+                        .forEach(item -> {
+                            item.setDiscountType(itemDiscount.discount().type());
+                            item.setDiscountValue(itemDiscount.discount().value());
+                            updateItemDiscountCalculations(item);
+                        });
+            });
+        }
+
+        if (request.serviceDiscounts() != null) {
+            request.serviceDiscounts().forEach(serviceDiscount -> {
+                invoiceItems.stream()
+                        .filter(item -> item.getServiceTypeId() != null &&
+                                item.getServiceTypeId().equals(serviceDiscount.serviceTypeId()))
+                        .forEach(item -> {
+                            item.setDiscountType(serviceDiscount.discount().type());
+                            item.setDiscountValue(serviceDiscount.discount().value());
+                            updateItemDiscountCalculations(item);
+                        });
+            });
+        }
+
+        invoiceItemRepository.saveAll(invoiceItems);
+        recalculateInvoiceTotals(invoice, invoiceItems);
+        InvoiceEntity savedInvoice = invoiceRepository.save(invoice);
+
+        return mapToResponse(savedInvoice, invoiceItems);
+    }
+
+    @Override
+    public InvoicePreviewResponse previewInvoiceWithDiscounts(CreateInvoiceRequest request) {
+        UserContextDto currentUser = UserContext.getUserContext();
+
+        BigDecimal subtotal = BigDecimal.ZERO;
+
+        for (var itemRequest : request.items()) {
+            BigDecimal itemPrice;
+            BigDecimal defaultDiscount = BigDecimal.ZERO;
+            DiscountType defaultDiscountType = DiscountType.PERCENTAGE;
+
+            if (itemRequest.itemId() != null) {
+                ItemEntity item = itemRepository.findByIdAndCompanyIdAndIsActiveTrue(
+                                itemRequest.itemId(), currentUser.companyId())
+                        .orElseThrow(() -> new RuntimeException("Item not found"));
+                itemPrice = item.getUnitPrice();
+                defaultDiscount = item.getDefaultDiscountValue();
+                defaultDiscountType = item.getDefaultDiscountType();
+            } else {
+                ServiceTypeEntity serviceType = serviceTypeRepository.findByIdAndCompanyIdAndIsActiveTrue(
+                                itemRequest.serviceTypeId(), currentUser.companyId())
+                        .orElseThrow(() -> new RuntimeException("Service type not found"));
+                itemPrice = serviceType.getBasePrice();
+                defaultDiscount = serviceType.getDefaultDiscountValue();
+                defaultDiscountType = serviceType.getDefaultDiscountType();
+            }
+
+            BigDecimal lineTotal = itemPrice.multiply(new BigDecimal(itemRequest.quantity()));
+            BigDecimal discountAmount = calculateDiscountAmount(lineTotal, defaultDiscount, defaultDiscountType);
+            subtotal = subtotal.add(lineTotal.subtract(discountAmount));
+        }
+
+        BigDecimal taxPercentage = request.taxPercentage() != null ? request.taxPercentage() : new BigDecimal("10.0");
+        BigDecimal taxAmount = subtotal.multiply(taxPercentage.divide(new BigDecimal("100")));
+        BigDecimal total = subtotal.add(taxAmount);
+
+        return InvoicePreviewResponse.builder()
+                .subtotal(subtotal)
+                .taxAmount(taxAmount)
+                .totalAmount(total)
+                .estimatedSavings(calculateEstimatedSavings(request))
+                .build();
+    }
+
+    @Override
     public String generateInvoiceNumber() {
         UserContextDto currentUser = UserContext.getUserContext();
 
-        // Generate invoice number format: INV-YYYYMMDD-XXXX
         String dateStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
 
-        // Get count of invoices for today to generate sequence
         LocalDateTime startOfDay = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
         LocalDateTime endOfDay = LocalDateTime.now().withHour(23).withMinute(59).withSecond(59);
 
@@ -278,6 +405,69 @@ public class InvoiceServiceImpl implements InvoiceService {
         int sequence = todayInvoices.size() + 1;
 
         return String.format("INV-%s-%04d", dateStr, sequence);
+    }
+
+    private void updateItemDiscountCalculations(InvoiceItemEntity item) {
+        BigDecimal originalPrice = item.getUnitPrice().multiply(new BigDecimal(item.getQuantity()));
+        BigDecimal discountAmount = calculateDiscountAmount(originalPrice, item.getDiscountValue(), item.getDiscountType());
+
+        item.setDiscountAmount(discountAmount);
+        item.setFinalPrice(originalPrice.subtract(discountAmount));
+    }
+
+    private BigDecimal calculateDiscountAmount(BigDecimal originalAmount, BigDecimal discountValue, DiscountType discountType) {
+        if (discountValue == null || discountValue.equals(BigDecimal.ZERO)) {
+            return BigDecimal.ZERO;
+        }
+
+        return switch (discountType) {
+            case PERCENTAGE -> originalAmount.multiply(discountValue.divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP));
+            case FIXED_AMOUNT -> discountValue.min(originalAmount);
+        };
+    }
+
+    private void recalculateInvoiceTotals(InvoiceEntity invoice, List<InvoiceItemEntity> items) {
+        BigDecimal subtotal = items.stream()
+                .map(InvoiceItemEntity::getFinalPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal overallDiscountAmount = calculateDiscountAmount(
+                subtotal, invoice.getOverallDiscountValue(), invoice.getOverallDiscountType());
+
+        BigDecimal discountedSubtotal = subtotal.subtract(overallDiscountAmount);
+        BigDecimal taxAmount = discountedSubtotal.multiply(new BigDecimal("0.10"));
+        BigDecimal total = discountedSubtotal.add(taxAmount);
+
+        invoice.setSubtotal(subtotal);
+        invoice.setOverallDiscountAmount(overallDiscountAmount);
+        invoice.setTaxAmount(taxAmount);
+        invoice.setTotalAmount(total);
+    }
+
+    private InvoiceResponse mapToResponseWithDefaults(InvoiceEntity invoice, List<InvoiceItemEntity> invoiceItems) {
+        invoiceItems.forEach(item -> {
+            if (item.getDiscountValue() == null || item.getDiscountValue().equals(BigDecimal.ZERO)) {
+                if (item.getItemId() != null) {
+                    itemRepository.findById(item.getItemId()).ifPresent(itemEntity -> {
+                        item.setDiscountValue(itemEntity.getDefaultDiscountValue());
+                        item.setDiscountType(itemEntity.getDefaultDiscountType());
+                        updateItemDiscountCalculations(item);
+                    });
+                } else if (item.getServiceTypeId() != null) {
+                    serviceTypeRepository.findById(item.getServiceTypeId()).ifPresent(serviceType -> {
+                        item.setDiscountValue(serviceType.getDefaultDiscountValue());
+                        item.setDiscountType(serviceType.getDefaultDiscountType());
+                        updateItemDiscountCalculations(item);
+                    });
+                }
+            }
+        });
+
+        return mapToResponse(invoice, invoiceItems);
+    }
+
+    private BigDecimal calculateEstimatedSavings(CreateInvoiceRequest request) {
+        return BigDecimal.ZERO;
     }
 
     private InvoiceResponse mapToResponse(InvoiceEntity invoice, List<InvoiceItemEntity> invoiceItems) {
@@ -288,6 +478,10 @@ public class InvoiceServiceImpl implements InvoiceService {
                         .quantity(item.getQuantity())
                         .unitPrice(item.getUnitPrice())
                         .totalPrice(item.getTotalPrice())
+                        .discountValue(item.getDiscountValue())
+                        .discountType(item.getDiscountType())
+                        .discountAmount(item.getDiscountAmount())
+                        .finalPrice(item.getFinalPrice())
                         .type(item.getType())
                         .build())
                 .collect(Collectors.toList());
@@ -299,6 +493,9 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .subtotal(invoice.getSubtotal())
                 .taxAmount(invoice.getTaxAmount())
                 .discountAmount(invoice.getDiscountAmount())
+                .overallDiscountValue(invoice.getOverallDiscountValue())
+                .overallDiscountType(invoice.getOverallDiscountType())
+                .overallDiscountAmount(invoice.getOverallDiscountAmount())
                 .totalAmount(invoice.getTotalAmount())
                 .status(invoice.getStatus())
                 .type(invoice.getType())

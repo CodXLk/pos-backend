@@ -112,4 +112,19 @@ public class ServiceRecordController {
                 HttpStatus.OK
         );
     }
+
+    @GetMapping("/branch/{branchId}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'COMPANY_ADMIN', 'BRANCH_ADMIN', 'POS_USER')")
+    @Operation(
+            summary = "Get service records by branch",
+            description = "Retrieve all service records for a specific branch with service details"
+    )
+    public ResponseEntity<StandardResponse<List<ServiceRecordResponse>>> getServiceRecordsByBranch(
+            @Parameter(description = "Branch ID") @PathVariable UUID branchId) {
+        List<ServiceRecordResponse> serviceRecords = serviceRecordService.getServiceRecordsByBranch(branchId);
+        return new ResponseEntity<>(
+                new StandardResponse<>(200, serviceRecords, "Branch service records retrieved successfully"),
+                HttpStatus.OK
+        );
+    }
 }

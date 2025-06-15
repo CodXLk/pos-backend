@@ -59,6 +59,15 @@ public class InvoiceEntity {
     @Column(columnDefinition = "BINARY(16)", nullable = false)
     private UUID branchId;
 
+    @Column(precision = 5, scale = 2)
+    private BigDecimal overallDiscountValue = BigDecimal.ZERO;
+
+    @Enumerated(EnumType.STRING)
+    private DiscountType overallDiscountType = DiscountType.PERCENTAGE;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal overallDiscountAmount = BigDecimal.ZERO;
+
     @CreatedDate
     private LocalDateTime createdDate;
 
