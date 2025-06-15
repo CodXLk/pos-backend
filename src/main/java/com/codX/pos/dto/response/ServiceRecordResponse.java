@@ -3,8 +3,10 @@ package com.codX.pos.dto.response;
 import com.codX.pos.entity.ServiceStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Builder
@@ -35,5 +37,8 @@ public record ServiceRecordResponse(
         BigDecimal totalAmount,
 
         @Schema(description = "Invoice ID if created")
-        UUID invoiceId
+        UUID invoiceId,
+
+        @Schema(description = "Service details")
+        List<ServiceDetailResponse> serviceDetails
 ) {}
