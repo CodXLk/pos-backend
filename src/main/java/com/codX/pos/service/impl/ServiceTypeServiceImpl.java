@@ -3,6 +3,8 @@ package com.codX.pos.service.impl;
 import com.codX.pos.context.UserContext;
 import com.codX.pos.dto.UserContextDto;
 import com.codX.pos.dto.request.CreateServiceTypeRequest;
+import com.codX.pos.dto.request.DiscountRequest;
+import com.codX.pos.entity.DiscountType;
 import com.codX.pos.entity.Role;
 import com.codX.pos.entity.ServiceTypeEntity;
 import com.codX.pos.exception.UnauthorizedException;
@@ -11,6 +13,7 @@ import com.codX.pos.service.ServiceTypeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,7 +32,6 @@ public class ServiceTypeServiceImpl implements ServiceTypeService {
             throw new UnauthorizedException("Only Branch Admin or above can create service types");
         }
 
-        // Check if service type name already exists in the branch
         if (serviceTypeRepository.existsByNameAndCompanyIdAndBranchId(
                 request.name(), currentUser.companyId(), currentUser.branchId())) {
             throw new RuntimeException("Service type with name '" + request.name() + "' already exists in this branch");
@@ -41,6 +43,8 @@ public class ServiceTypeServiceImpl implements ServiceTypeService {
                 .basePrice(request.basePrice())
                 .estimatedDurationMinutes(request.estimatedDurationMinutes())
                 .serviceCategoryId(request.serviceCategoryId())
+                .defaultDiscountValue(BigDecimal.ZERO)
+                .defaultDiscountType(DiscountType.PERCENTAGE)
                 .companyId(currentUser.companyId())
                 .branchId(currentUser.branchId())
                 .isActive(true)
@@ -70,17 +74,13 @@ public class ServiceTypeServiceImpl implements ServiceTypeService {
     public List<ServiceTypeEntity> getServiceTypesByBranch(UUID branchId) {
         UserContextDto currentUser = UserContext.getUserContext();
 
-        // Authorization logic based on role
         switch (currentUser.role()) {
             case SUPER_ADMIN:
-                // Super admin can access any branch
                 break;
             case COMPANY_ADMIN:
-                // Company admin can access branches within their company
                 break;
             case BRANCH_ADMIN:
             case POS_USER:
-                // Branch admin and POS user can only access their own branch
                 if (!currentUser.branchId().equals(branchId)) {
                     throw new UnauthorizedException("You can only access service types from your own branch");
                 }
@@ -111,6 +111,23 @@ public class ServiceTypeServiceImpl implements ServiceTypeService {
         existingServiceType.setServiceCategoryId(request.serviceCategoryId());
 
         return serviceTypeRepository.save(existingServiceType);
+    }
+
+    @Override
+    public ServiceTypeEntity updateDefaultDiscount(UUID id, DiscountRequest discountRequest) {
+        UserContextDto currentUser = UserContext.getUserContext();
+
+        if (currentUser.role() != Role.BRANCH_ADMIN && currentUser.role() != Role.COMPANY_ADMIN &&
+                currentUser.role() != Role.SUPER_ADMIN) {
+            throw new UnauthorizedException("Only Branch Admin or above can update service type discounts");
+        }
+
+        ServiceTypeEntity serviceType = getServiceTypeById(id);
+
+        serviceType.setDefaultDiscountValue(discountRequest.value() != null ? discountRequest.value() : BigDecimal.ZERO);
+        serviceType.setDefaultDiscountType(discountRequest.type());
+
+        return serviceTypeRepository.save(serviceType);
     }
 
     @Override

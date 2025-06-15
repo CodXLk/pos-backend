@@ -18,7 +18,7 @@ import lombok.NoArgsConstructor;
         }
         """
 )
-public class StandardResponse {
+public class StandardResponse<T> {
 
     @Schema(
             description = "HTTP status code",
@@ -32,7 +32,7 @@ public class StandardResponse {
             description = "Response data (can be any type)",
             example = "{\"id\": \"123\", \"name\": \"Example\"}"
     )
-    private Object data;
+    private T data;
 
     @Schema(
             description = "Response message describing the operation result",

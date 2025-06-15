@@ -1,10 +1,10 @@
 package com.codX.pos.dto.response;
 
+import com.codX.pos.entity.ServiceDetailType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Builder
@@ -13,14 +13,17 @@ public record ServiceDetailResponse(
         @Schema(description = "Service detail ID")
         UUID id,
 
-        @Schema(description = "Service record ID")
-        UUID serviceRecordId,
-
         @Schema(description = "Service type ID")
         UUID serviceTypeId,
 
-        @Schema(description = "Item ID")
+        @Schema(description = "Service type name")
+        String serviceTypeName,
+
+        @Schema(description = "Item ID (if applicable)")
         UUID itemId,
+
+        @Schema(description = "Item name (if applicable)")
+        String itemName,
 
         @Schema(description = "Quantity")
         Integer quantity,
@@ -31,9 +34,9 @@ public record ServiceDetailResponse(
         @Schema(description = "Total price")
         BigDecimal totalPrice,
 
-        @Schema(description = "Notes")
-        String notes,
+        @Schema(description = "Detail type")
+        ServiceDetailType type,
 
-        @Schema(description = "Creation date")
-        LocalDateTime createdDate
+        @Schema(description = "Notes")
+        String notes
 ) {}

@@ -1,10 +1,10 @@
 package com.codX.pos.dto.response;
 
+import com.codX.pos.entity.DiscountType;
 import com.codX.pos.entity.InvoiceStatus;
 import com.codX.pos.entity.InvoiceType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -22,7 +22,7 @@ public record InvoiceResponse(
         @Schema(description = "Invoice date")
         LocalDateTime invoiceDate,
 
-        @Schema(description = "Subtotal amount")
+        @Schema(description = "Subtotal")
         BigDecimal subtotal,
 
         @Schema(description = "Tax amount")
@@ -30,6 +30,15 @@ public record InvoiceResponse(
 
         @Schema(description = "Discount amount")
         BigDecimal discountAmount,
+
+        @Schema(description = "Overall discount value")
+        BigDecimal overallDiscountValue,
+
+        @Schema(description = "Overall discount type")
+        DiscountType overallDiscountType,
+
+        @Schema(description = "Overall discount amount")
+        BigDecimal overallDiscountAmount,
 
         @Schema(description = "Total amount")
         BigDecimal totalAmount,

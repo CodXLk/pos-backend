@@ -12,6 +12,7 @@ public interface ServiceRecordService {
     ServiceRecordEntity createServiceRecord(CreateServiceRecordRequest request);
     List<ServiceRecordResponse> getServiceRecordsByVehicle(UUID vehicleId);
     List<ServiceRecordResponse> getServiceRecordsByCustomer(UUID customerId);
+    List<ServiceRecordResponse> getServiceRecordsByBranch(UUID branchId); // NEW
     List<ServiceRecordResponse> getServiceRecordsByDateRange(LocalDateTime startDate, LocalDateTime endDate);
     ServiceRecordResponse getServiceRecordById(UUID id);
     ServiceRecordEntity updateServiceRecord(UUID id, CreateServiceRecordRequest request);

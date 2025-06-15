@@ -1,6 +1,7 @@
 package com.codX.pos.controller;
 
 import com.codX.pos.dto.request.CreateServiceTypeRequest;
+import com.codX.pos.dto.request.DiscountRequest;
 import com.codX.pos.entity.ServiceTypeEntity;
 import com.codX.pos.service.ServiceTypeService;
 import com.codX.pos.util.StandardResponse;
@@ -157,6 +158,19 @@ public class ServiceTypeController {
         serviceTypeService.deactivateServiceType(id);
         return new ResponseEntity<>(
                 new StandardResponse(200, null, "Service type deactivated successfully"),
+                HttpStatus.OK
+        );
+    }
+
+    @PutMapping("/{id}/default-discount")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'COMPANY_ADMIN', 'BRANCH_ADMIN')")
+    @Operation(summary = "Update service type default discount")
+    public ResponseEntity<StandardResponse<ServiceTypeEntity>> updateServiceTypeDefaultDiscount(
+            @PathVariable UUID id,
+            @Valid @RequestBody DiscountRequest discountRequest) {
+        ServiceTypeEntity serviceType = serviceTypeService.updateDefaultDiscount(id, discountRequest);
+        return new ResponseEntity<>(
+                new StandardResponse<>(200, serviceType, "Service type default discount updated successfully"),
                 HttpStatus.OK
         );
     }

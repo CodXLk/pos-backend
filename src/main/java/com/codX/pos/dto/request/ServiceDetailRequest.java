@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Positive;
 import lombok.Builder;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 @Builder
@@ -15,19 +16,17 @@ public record ServiceDetailRequest(
         @Schema(description = "Service type ID")
         UUID serviceTypeId,
 
-        @Schema(description = "Item ID (optional)")
-        UUID itemId,
-
         @NotNull(message = "Quantity is required")
         @Positive(message = "Quantity must be positive")
-        @Schema(description = "Quantity", example = "1")
+        @Schema(description = "Service quantity", example = "1")
         Integer quantity,
 
-        @NotNull(message = "Unit price is required")
-        @Positive(message = "Unit price must be positive")
-        @Schema(description = "Unit price", example = "25.00")
+        @Schema(description = "Unit price override (optional)")
         BigDecimal unitPrice,
 
-        @Schema(description = "Notes for this service detail")
-        String notes
+        @Schema(description = "Notes for this service")
+        String notes,
+
+        @Schema(description = "Items used in this service")
+        List<ServiceItemRequest> items
 ) {}

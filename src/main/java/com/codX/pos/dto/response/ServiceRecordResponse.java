@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Builder
-@Schema(description = "Service record response with details")
+@Schema(description = "Service record response")
 public record ServiceRecordResponse(
         @Schema(description = "Service record ID")
         UUID id,
@@ -27,7 +27,7 @@ public record ServiceRecordResponse(
         @Schema(description = "Current mileage")
         Integer currentMileage,
 
-        @Schema(description = "Notes")
+        @Schema(description = "Service notes")
         String notes,
 
         @Schema(description = "Service status")
@@ -36,9 +36,9 @@ public record ServiceRecordResponse(
         @Schema(description = "Total amount")
         BigDecimal totalAmount,
 
-        @Schema(description = "Service details")
-        List<ServiceDetailResponse> serviceDetails,
+        @Schema(description = "Invoice ID if created")
+        UUID invoiceId,
 
-        @Schema(description = "Creation date")
-        LocalDateTime createdDate
+        @Schema(description = "Service details")
+        List<ServiceDetailResponse> serviceDetails
 ) {}

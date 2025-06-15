@@ -1,6 +1,7 @@
 package com.codX.pos.controller;
 
 import com.codX.pos.dto.request.CreateItemRequest;
+import com.codX.pos.dto.request.DiscountRequest;
 import com.codX.pos.entity.ItemEntity;
 import com.codX.pos.service.ItemService;
 import com.codX.pos.util.StandardResponse;
@@ -159,6 +160,19 @@ public class ItemController {
         itemService.deactivateItem(id);
         return new ResponseEntity<>(
                 new StandardResponse(200, null, "Item deactivated successfully"),
+                HttpStatus.OK
+        );
+    }
+
+    @PutMapping("/{id}/default-discount")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'COMPANY_ADMIN', 'BRANCH_ADMIN')")
+    @Operation(summary = "Update item default discount")
+    public ResponseEntity<StandardResponse<ItemEntity>> updateItemDefaultDiscount(
+            @PathVariable UUID id,
+            @Valid @RequestBody DiscountRequest discountRequest) {
+        ItemEntity item = itemService.updateDefaultDiscount(id, discountRequest);
+        return new ResponseEntity<>(
+                new StandardResponse<>(200, item, "Item default discount updated successfully"),
                 HttpStatus.OK
         );
     }

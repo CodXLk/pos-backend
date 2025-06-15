@@ -34,6 +34,7 @@ public class ServiceRecordEntity {
     private LocalDateTime serviceDate;
     private Integer currentMileage;
     private String notes;
+    @Column(precision = 10, scale = 2)
     private BigDecimal totalAmount;
 
     @Enumerated(EnumType.STRING)

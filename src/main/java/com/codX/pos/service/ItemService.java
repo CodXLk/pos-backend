@@ -1,6 +1,7 @@
 package com.codX.pos.service;
 
 import com.codX.pos.dto.request.CreateItemRequest;
+import com.codX.pos.dto.request.DiscountRequest;
 import com.codX.pos.entity.ItemEntity;
 
 import java.util.List;
@@ -10,8 +11,9 @@ public interface ItemService {
     ItemEntity createItem(CreateItemRequest request);
     List<ItemEntity> getItemsByCategory(UUID categoryId);
     List<ItemEntity> getItemsByCompany(UUID companyId);
-    List<ItemEntity> getItemsByBranch(UUID branchId); // NEW METHOD
+    List<ItemEntity> getItemsByBranch(UUID branchId);
     ItemEntity getItemById(UUID id);
     ItemEntity updateItem(UUID id, CreateItemRequest request);
+    ItemEntity updateDefaultDiscount(UUID id, DiscountRequest discountRequest); // NEW
     void deactivateItem(UUID id);
 }

@@ -15,8 +15,8 @@ import java.util.UUID;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "invoice_items")
-public class InvoiceItemEntity {
+@Table(name = "service_details")
+public class ServiceDetailEntity {
 
     @Id
     @GenericGenerator(name = "uuid", strategy = "uuid2")
@@ -25,33 +25,26 @@ public class InvoiceItemEntity {
     private UUID id;
 
     @Column(columnDefinition = "BINARY(16)", nullable = false)
-    private UUID invoiceId;
+    private UUID serviceRecordId;
+
+    @Column(columnDefinition = "BINARY(16)", nullable = false)
+    private UUID serviceTypeId;
 
     @Column(columnDefinition = "BINARY(16)")
-    private UUID itemId; // For item sales
+    private UUID itemId; // Optional - for items used in service
 
-    @Column(columnDefinition = "BINARY(16)")
-    private UUID serviceTypeId; // For service sales
-
-    private String description;
     private Integer quantity;
+
+    @Column(precision = 10, scale = 2)
     private BigDecimal unitPrice;
+
+    @Column(precision = 10, scale = 2)
     private BigDecimal totalPrice;
 
-    @Column(precision = 5, scale = 2)
-    private BigDecimal discountValue = BigDecimal.ZERO;
+    private String notes;
 
     @Enumerated(EnumType.STRING)
-    private DiscountType discountType = DiscountType.PERCENTAGE;
-
-    @Column(precision = 10, scale = 2)
-    private BigDecimal discountAmount = BigDecimal.ZERO;
-
-    @Column(precision = 10, scale = 2)
-    private BigDecimal finalPrice;
-
-    @Enumerated(EnumType.STRING)
-    private InvoiceItemType type; // SERVICE, ITEM
+    private ServiceDetailType type; // SERVICE or ITEM
 
     @Column(columnDefinition = "BINARY(16)", nullable = false)
     private UUID companyId;
