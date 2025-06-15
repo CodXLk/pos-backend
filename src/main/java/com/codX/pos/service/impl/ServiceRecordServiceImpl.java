@@ -3,17 +3,20 @@ package com.codX.pos.service.impl;
 import com.codX.pos.context.UserContext;
 import com.codX.pos.dto.UserContextDto;
 import com.codX.pos.dto.request.CreateServiceRecordRequest;
+import com.codX.pos.dto.response.ServiceDetailResponse;
 import com.codX.pos.dto.response.ServiceRecordResponse;
-import com.codX.pos.entity.Role;
-import com.codX.pos.entity.ServiceRecordEntity;
-import com.codX.pos.entity.ServiceStatus;
+import com.codX.pos.entity.*;
 import com.codX.pos.exception.UnauthorizedException;
+import com.codX.pos.repository.ItemRepository;
+import com.codX.pos.repository.ServiceDetailRepository;
 import com.codX.pos.repository.ServiceRecordRepository;
+import com.codX.pos.repository.ServiceTypeRepository;
 import com.codX.pos.service.ServiceRecordService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -24,6 +27,9 @@ import java.util.stream.Collectors;
 public class ServiceRecordServiceImpl implements ServiceRecordService {
 
     private final ServiceRecordRepository serviceRecordRepository;
+    private final ServiceDetailRepository serviceDetailRepository;
+    private final ServiceTypeRepository serviceTypeRepository;
+    private final ItemRepository itemRepository;
 
     @Override
     @Transactional
@@ -35,6 +41,7 @@ public class ServiceRecordServiceImpl implements ServiceRecordService {
             throw new UnauthorizedException("Insufficient permissions to create service record");
         }
 
+        // Create service record
         ServiceRecordEntity serviceRecord = ServiceRecordEntity.builder()
                 .vehicleId(request.vehicleId())
                 .customerId(request.customerId())
@@ -42,11 +49,86 @@ public class ServiceRecordServiceImpl implements ServiceRecordService {
                 .currentMileage(request.currentMileage())
                 .notes(request.notes())
                 .status(request.status() != null ? request.status() : ServiceStatus.PENDING)
+                .totalAmount(BigDecimal.ZERO)
                 .companyId(currentUser.companyId())
                 .branchId(currentUser.branchId())
                 .build();
 
-        return serviceRecordRepository.save(serviceRecord);
+        ServiceRecordEntity savedServiceRecord = serviceRecordRepository.save(serviceRecord);
+
+        // Create service details and calculate total
+        BigDecimal totalAmount = BigDecimal.ZERO;
+
+        if (request.serviceDetails() != null) {
+            for (var serviceDetailRequest : request.serviceDetails()) {
+                // Get service type
+                ServiceTypeEntity serviceType = serviceTypeRepository.findByIdAndCompanyIdAndIsActiveTrue(
+                                serviceDetailRequest.serviceTypeId(), currentUser.companyId())
+                        .orElseThrow(() -> new RuntimeException("Service type not found"));
+
+                // Create service detail for the service type
+                BigDecimal servicePrice = serviceDetailRequest.unitPrice() != null ?
+                        serviceDetailRequest.unitPrice() : serviceType.getBasePrice();
+                BigDecimal serviceTotalPrice = servicePrice.multiply(new BigDecimal(serviceDetailRequest.quantity()));
+
+                ServiceDetailEntity serviceDetail = ServiceDetailEntity.builder()
+                        .serviceRecordId(savedServiceRecord.getId())
+                        .serviceTypeId(serviceDetailRequest.serviceTypeId())
+                        .quantity(serviceDetailRequest.quantity())
+                        .unitPrice(servicePrice)
+                        .totalPrice(serviceTotalPrice)
+                        .type(ServiceDetailType.SERVICE)
+                        .notes(serviceDetailRequest.notes())
+                        .companyId(currentUser.companyId())
+                        .branchId(currentUser.branchId())
+                        .build();
+
+                serviceDetailRepository.save(serviceDetail);
+                totalAmount = totalAmount.add(serviceTotalPrice);
+
+                // Create service details for items used in this service
+                if (serviceDetailRequest.items() != null) {
+                    for (var itemRequest : serviceDetailRequest.items()) {
+                        ItemEntity item = itemRepository.findByIdAndCompanyIdAndIsActiveTrue(
+                                        itemRequest.itemId(), currentUser.companyId())
+                                .orElseThrow(() -> new RuntimeException("Item not found"));
+
+                        // Check stock availability
+                        if (item.getStockQuantity() < itemRequest.quantity()) {
+                            throw new RuntimeException("Insufficient stock for item: " + item.getName());
+                        }
+
+                        BigDecimal itemPrice = itemRequest.unitPrice() != null ?
+                                itemRequest.unitPrice() : item.getUnitPrice();
+                        BigDecimal itemTotalPrice = itemPrice.multiply(new BigDecimal(itemRequest.quantity()));
+
+                        ServiceDetailEntity itemDetail = ServiceDetailEntity.builder()
+                                .serviceRecordId(savedServiceRecord.getId())
+                                .serviceTypeId(serviceDetailRequest.serviceTypeId())
+                                .itemId(itemRequest.itemId())
+                                .quantity(itemRequest.quantity())
+                                .unitPrice(itemPrice)
+                                .totalPrice(itemTotalPrice)
+                                .type(ServiceDetailType.ITEM)
+                                .notes(itemRequest.notes())
+                                .companyId(currentUser.companyId())
+                                .branchId(currentUser.branchId())
+                                .build();
+
+                        serviceDetailRepository.save(itemDetail);
+                        totalAmount = totalAmount.add(itemTotalPrice);
+
+                        // Update item stock
+                        item.setStockQuantity(item.getStockQuantity() - itemRequest.quantity());
+                        itemRepository.save(item);
+                    }
+                }
+            }
+        }
+
+        // Update service record with total amount
+        savedServiceRecord.setTotalAmount(totalAmount);
+        return serviceRecordRepository.save(savedServiceRecord);
     }
 
     @Override
@@ -121,9 +203,12 @@ public class ServiceRecordServiceImpl implements ServiceRecordService {
     @Override
     @Transactional
     public ServiceRecordEntity updateServiceRecord(UUID id, CreateServiceRecordRequest request) {
-        ServiceRecordEntity existingRecord = serviceRecordRepository.findByIdAndCompanyId(id, UserContext.getUserContext().companyId())
+        UserContextDto currentUser = UserContext.getUserContext();
+
+        ServiceRecordEntity existingRecord = serviceRecordRepository.findByIdAndCompanyId(id, currentUser.companyId())
                 .orElseThrow(() -> new RuntimeException("Service record not found"));
 
+        // Update basic fields
         existingRecord.setVehicleId(request.vehicleId());
         existingRecord.setCustomerId(request.customerId());
         existingRecord.setServiceDate(request.serviceDate());
@@ -131,19 +216,125 @@ public class ServiceRecordServiceImpl implements ServiceRecordService {
         existingRecord.setNotes(request.notes());
         existingRecord.setStatus(request.status());
 
+        // Delete existing service details and restore stock
+        List<ServiceDetailEntity> existingDetails = serviceDetailRepository.findByServiceRecordIdAndCompanyId(id, currentUser.companyId());
+        for (ServiceDetailEntity detail : existingDetails) {
+            if (detail.getType() == ServiceDetailType.ITEM && detail.getItemId() != null) {
+                ItemEntity item = itemRepository.findById(detail.getItemId()).orElse(null);
+                if (item != null) {
+                    item.setStockQuantity(item.getStockQuantity() + detail.getQuantity());
+                    itemRepository.save(item);
+                }
+            }
+        }
+        serviceDetailRepository.deleteByServiceRecordIdAndCompanyId(id, currentUser.companyId());
+
+        // Recreate service details with new data
+        BigDecimal totalAmount = BigDecimal.ZERO;
+
+        if (request.serviceDetails() != null) {
+            for (var serviceDetailRequest : request.serviceDetails()) {
+                ServiceTypeEntity serviceType = serviceTypeRepository.findByIdAndCompanyIdAndIsActiveTrue(
+                                serviceDetailRequest.serviceTypeId(), currentUser.companyId())
+                        .orElseThrow(() -> new RuntimeException("Service type not found"));
+
+                BigDecimal servicePrice = serviceDetailRequest.unitPrice() != null ?
+                        serviceDetailRequest.unitPrice() : serviceType.getBasePrice();
+                BigDecimal serviceTotalPrice = servicePrice.multiply(new BigDecimal(serviceDetailRequest.quantity()));
+
+                ServiceDetailEntity serviceDetail = ServiceDetailEntity.builder()
+                        .serviceRecordId(id)
+                        .serviceTypeId(serviceDetailRequest.serviceTypeId())
+                        .quantity(serviceDetailRequest.quantity())
+                        .unitPrice(servicePrice)
+                        .totalPrice(serviceTotalPrice)
+                        .type(ServiceDetailType.SERVICE)
+                        .notes(serviceDetailRequest.notes())
+                        .companyId(currentUser.companyId())
+                        .branchId(currentUser.branchId())
+                        .build();
+
+                serviceDetailRepository.save(serviceDetail);
+                totalAmount = totalAmount.add(serviceTotalPrice);
+
+                if (serviceDetailRequest.items() != null) {
+                    for (var itemRequest : serviceDetailRequest.items()) {
+                        ItemEntity item = itemRepository.findByIdAndCompanyIdAndIsActiveTrue(
+                                        itemRequest.itemId(), currentUser.companyId())
+                                .orElseThrow(() -> new RuntimeException("Item not found"));
+
+                        if (item.getStockQuantity() < itemRequest.quantity()) {
+                            throw new RuntimeException("Insufficient stock for item: " + item.getName());
+                        }
+
+                        BigDecimal itemPrice = itemRequest.unitPrice() != null ?
+                                itemRequest.unitPrice() : item.getUnitPrice();
+                        BigDecimal itemTotalPrice = itemPrice.multiply(new BigDecimal(itemRequest.quantity()));
+
+                        ServiceDetailEntity itemDetail = ServiceDetailEntity.builder()
+                                .serviceRecordId(id)
+                                .serviceTypeId(serviceDetailRequest.serviceTypeId())
+                                .itemId(itemRequest.itemId())
+                                .quantity(itemRequest.quantity())
+                                .unitPrice(itemPrice)
+                                .totalPrice(itemTotalPrice)
+                                .type(ServiceDetailType.ITEM)
+                                .notes(itemRequest.notes())
+                                .companyId(currentUser.companyId())
+                                .branchId(currentUser.branchId())
+                                .build();
+
+                        serviceDetailRepository.save(itemDetail);
+                        totalAmount = totalAmount.add(itemTotalPrice);
+
+                        item.setStockQuantity(item.getStockQuantity() - itemRequest.quantity());
+                        itemRepository.save(item);
+                    }
+                }
+            }
+        }
+
+        existingRecord.setTotalAmount(totalAmount);
         return serviceRecordRepository.save(existingRecord);
     }
 
     @Override
     @Transactional
     public void deleteServiceRecord(UUID id) {
-        ServiceRecordEntity serviceRecord = serviceRecordRepository.findByIdAndCompanyId(id, UserContext.getUserContext().companyId())
+        UserContextDto currentUser = UserContext.getUserContext();
+
+        ServiceRecordEntity serviceRecord = serviceRecordRepository.findByIdAndCompanyId(id, currentUser.companyId())
                 .orElseThrow(() -> new RuntimeException("Service record not found"));
 
+        // Restore stock for items
+        List<ServiceDetailEntity> serviceDetails = serviceDetailRepository.findByServiceRecordIdAndCompanyId(id, currentUser.companyId());
+        for (ServiceDetailEntity detail : serviceDetails) {
+            if (detail.getType() == ServiceDetailType.ITEM && detail.getItemId() != null) {
+                ItemEntity item = itemRepository.findById(detail.getItemId()).orElse(null);
+                if (item != null) {
+                    item.setStockQuantity(item.getStockQuantity() + detail.getQuantity());
+                    itemRepository.save(item);
+                }
+            }
+        }
+
+        // Delete service details first
+        serviceDetailRepository.deleteByServiceRecordIdAndCompanyId(id, currentUser.companyId());
+
+        // Delete service record
         serviceRecordRepository.delete(serviceRecord);
     }
 
     private ServiceRecordResponse mapToResponse(ServiceRecordEntity serviceRecord) {
+        UserContextDto currentUser = UserContext.getUserContext();
+
+        List<ServiceDetailEntity> serviceDetails = serviceDetailRepository.findByServiceRecordIdAndCompanyId(
+                serviceRecord.getId(), currentUser.companyId());
+
+        List<ServiceDetailResponse> serviceDetailResponses = serviceDetails.stream()
+                .map(this::mapServiceDetailToResponse)
+                .collect(Collectors.toList());
+
         return ServiceRecordResponse.builder()
                 .id(serviceRecord.getId())
                 .vehicleId(serviceRecord.getVehicleId())
@@ -154,6 +345,39 @@ public class ServiceRecordServiceImpl implements ServiceRecordService {
                 .status(serviceRecord.getStatus())
                 .totalAmount(serviceRecord.getTotalAmount())
                 .invoiceId(serviceRecord.getInvoiceId())
+                .serviceDetails(serviceDetailResponses)
+                .build();
+    }
+
+    private ServiceDetailResponse mapServiceDetailToResponse(ServiceDetailEntity serviceDetail) {
+        String serviceTypeName = null;
+        String itemName = null;
+
+        if (serviceDetail.getServiceTypeId() != null) {
+            ServiceTypeEntity serviceType = serviceTypeRepository.findById(serviceDetail.getServiceTypeId()).orElse(null);
+            if (serviceType != null) {
+                serviceTypeName = serviceType.getName();
+            }
+        }
+
+        if (serviceDetail.getItemId() != null) {
+            ItemEntity item = itemRepository.findById(serviceDetail.getItemId()).orElse(null);
+            if (item != null) {
+                itemName = item.getName();
+            }
+        }
+
+        return ServiceDetailResponse.builder()
+                .id(serviceDetail.getId())
+                .serviceTypeId(serviceDetail.getServiceTypeId())
+                .serviceTypeName(serviceTypeName)
+                .itemId(serviceDetail.getItemId())
+                .itemName(itemName)
+                .quantity(serviceDetail.getQuantity())
+                .unitPrice(serviceDetail.getUnitPrice())
+                .totalPrice(serviceDetail.getTotalPrice())
+                .type(serviceDetail.getType())
+                .notes(serviceDetail.getNotes())
                 .build();
     }
 }
